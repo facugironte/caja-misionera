@@ -482,8 +482,12 @@
   var SYNC_URL_KEY = "cajaMisioneraWebAppUrl";
   var SYNC_QUEUE_KEY = "cajaMisioneraPendingSync";
   var syncing = false;
+  var DEFAULT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx2OcRP71M0H5E5feartLBC0-LCddaCGUToNzVOhj74Gi5oUQFTWQysqs3ckShF8Sg/exec";
 
-  function getWebAppUrl() { return localStorage.getItem(SYNC_URL_KEY) || ""; }
+  function getWebAppUrl() {
+    var stored = localStorage.getItem(SYNC_URL_KEY);
+    return stored === null ? DEFAULT_WEB_APP_URL : stored;
+  }
   function setWebAppUrl(url) {
     if (url) localStorage.setItem(SYNC_URL_KEY, url);
     else localStorage.removeItem(SYNC_URL_KEY);
@@ -1244,7 +1248,7 @@
     html += '<div class="eyebrow">Sincronización con Sheets</div>';
     html += '<div class="cash-panel">' +
       '<div class="cash-row"><span class="k">Token de este puesto</span><span class="v" style="font-variant-numeric:normal;">' + puestoToken() + "</span></div>" +
-      '<label class="field-label">URL del Web App (Apps Script)' +
+      '<label class="field-label">URL del Web App (Apps Script) — ya viene configurada por defecto; solo tocá si necesitás apuntar a otra planilla' +
       '<input type="text" id="webAppUrlInput" placeholder="https://script.google.com/macros/s/AKfycb.../exec" value="' + (getWebAppUrl() || "") + '"></label>' +
       '<div class="cash-row"><span class="k">Pendientes de enviar</span><span class="v" id="pendingCountLbl">' + pendingCount() + "</span></div>" +
       '<div style="display:flex;gap:8px;margin-top:10px;">' +
