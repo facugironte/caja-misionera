@@ -1,4 +1,6 @@
+<meta charset="utf-8">
 <title>Caja Misionera</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light only">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,7 +73,10 @@
     font-family: var(--font-display); font-weight: 600; font-size: 16.5px; margin: 0;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .topbar-title p { margin: 0; font-size: 11.5px; color: var(--text-muted); }
+  .topbar-title p {
+    margin: 0; font-size: 11.5px; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .topbar-chip {
     font-size: 12px; font-weight: 600; color: var(--text-muted);
     background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
@@ -201,7 +206,7 @@
   .cart-line .stepper { display: flex; align-items: center; gap: 6px; }
   .qty-btn {
     border: 1px solid var(--border); background: var(--surface-sunken); color: var(--text);
-    width: 30px; height: 30px; border-radius: 9px; cursor: pointer; font-size: 15px; font-weight: 600; flex: none;
+    width: 40px; height: 40px; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; flex: none;
   }
   .stock-num { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13.5px; min-width: 22px; text-align: center; }
 
@@ -295,8 +300,8 @@
     display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-muted); flex: none;
   }
   .set-row .price-field input {
-    width: 76px; border: 1px solid var(--border); border-radius: 9px; padding: 5px 7px;
-    font-size: 13px; background: var(--surface-sunken); color: var(--text); text-align: right;
+    width: 88px; border: 1px solid var(--border); border-radius: 9px; padding: 5px 7px;
+    font-size: 16px; background: var(--surface-sunken); color: var(--text); text-align: right;
     font-variant-numeric: tabular-nums;
   }
   .set-row .stock-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -307,7 +312,7 @@
   .cash-input-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0 4px; }
   .cash-input-row input {
     width: 130px; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px;
-    font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; background: var(--surface-sunken); color: var(--text);
+    font-size: 16px; text-align: right; font-variant-numeric: tabular-nums; background: var(--surface-sunken); color: var(--text);
   }
   .cash-result {
     margin-top: 10px; padding: 10px 12px; border-radius: 12px; font-weight: 600; font-size: 13.5px;
@@ -322,6 +327,28 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* ---- Login / identificación de puesto ---- */
+  .field-label {
+    display: block; font-size: 12.5px; font-weight: 600; color: var(--text-muted); margin-top: 12px;
+  }
+  .field-label:first-child { margin-top: 0; }
+  .field-label input {
+    width: 100%; margin-top: 5px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 11px; font-size: 16px; background: var(--surface-sunken); color: var(--text);
+    font-family: inherit;
+  }
+  .field-label input:focus-visible { outline: 2px solid var(--stand-accent); outline-offset: 1px; }
+
+  /* ---- Indicador de sincronización pendiente ---- */
+  .sync-badge {
+    position: fixed; top: 64px; right: 10px; z-index: 45; display: none; align-items: center; gap: 6px;
+    max-width: calc(100vw - 20px);
+    background: var(--stock-medio-bg); color: var(--stock-medio); border: 1px solid var(--stock-medio-bg);
+    font-size: 11.5px; font-weight: 700; padding: 7px 12px; border-radius: 999px; cursor: pointer;
+    box-shadow: var(--shadow);
+  }
+  .sync-badge:hover { filter: brightness(.97); }
+
   @media (prefers-reduced-motion: reduce) {
     .tile, .stand-card, .menu-btn, .switch::after, .pay-choice { transition: none !important; }
   }
@@ -329,6 +356,7 @@
 
 <div class="app" id="app"></div>
 <div class="toast" id="toast"></div>
+<div class="sync-badge" id="syncBadge"></div>
 
 <script>
 (function () {
@@ -404,6 +432,8 @@
       corte: 1,
       setupDone: false,
       cajaInicial: 0,
+      corteApertura: null,
+      corteCajaInicial: 0,
       totals: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 },
       cumulative: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 },
       log: [],
@@ -414,7 +444,176 @@
     };
   });
 
-  var nav = { screen: "select", stand: null, cart: [], checkout: false };
+  // ---------------- SESIÓN DE PUESTO ----------------
+  var SESSION_KEY = "cajaMisioneraSession";
+  var session = null;
+  try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch (e) { session = null; }
+  if (session && !STANDS[session.tipo]) session = null;
+
+  function saveSession() { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
+
+  function slugify(s) {
+    return String(s || "").trim().toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/(^-+|-+$)/g, "");
+  }
+
+  // ---------------- PERSISTENCIA DEL ESTADO OPERATIVO (stock, corte en curso) ----------------
+  function stateKey(tipo, identificador) {
+    return "cajaMisioneraState:" + tipo + ":" + slugify(identificador);
+  }
+  function saveState() {
+    if (!session || !nav.stand) return;
+    try { localStorage.setItem(stateKey(session.tipo, session.identificador), JSON.stringify(state[nav.stand])); } catch (e) {}
+  }
+  function loadState(tipo, identificador) {
+    try {
+      var raw = localStorage.getItem(stateKey(tipo, identificador));
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function puestoToken() {
+    if (!session) return "";
+    return session.tipo + ":" + slugify(session.identificador);
+  }
+
+  // ---------------- SINCRONIZACIÓN CON GOOGLE SHEETS ----------------
+  var SYNC_URL_KEY = "cajaMisioneraWebAppUrl";
+  var SYNC_QUEUE_KEY = "cajaMisioneraPendingSync";
+  var syncing = false;
+
+  function getWebAppUrl() { return localStorage.getItem(SYNC_URL_KEY) || ""; }
+  function setWebAppUrl(url) {
+    if (url) localStorage.setItem(SYNC_URL_KEY, url);
+    else localStorage.removeItem(SYNC_URL_KEY);
+  }
+
+  function loadQueue() {
+    try { return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function saveQueue(q) { localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); updateSyncBadge(); }
+  function pendingCount() { return loadQueue().length; }
+
+  function enqueuePayload(payload) {
+    var q = loadQueue();
+    q.push(payload);
+    saveQueue(q);
+  }
+
+  function sendOne(payload) {
+    var url = getWebAppUrl();
+    if (!url) return Promise.reject(new Error("sin-url"));
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      if (!res.ok) throw new Error("http-" + res.status);
+      return res.json().catch(function () { return {}; });
+    }).then(function (data) {
+      if (data && data.ok === false) throw new Error(data.error || "rechazado");
+      return true;
+    });
+  }
+
+  function flushQueue() {
+    if (syncing) return Promise.resolve();
+    var q = loadQueue();
+    if (!q.length) return Promise.resolve();
+    syncing = true;
+    return sendOne(q[0]).then(function () {
+      var q2 = loadQueue();
+      q2.shift();
+      saveQueue(q2);
+      syncing = false;
+      return q2.length ? flushQueue() : null;
+    }).catch(function () {
+      syncing = false;
+    });
+  }
+
+  function updateSyncBadge() {
+    var n = pendingCount();
+    var el = document.getElementById("syncBadge");
+    if (el) {
+      if (n > 0) {
+        el.style.display = "flex";
+        el.textContent = "🔄 " + n + " corte" + (n === 1 ? "" : "s") + " sin sincronizar";
+      } else {
+        el.style.display = "none";
+      }
+    }
+    var lbl = document.getElementById("pendingCountLbl");
+    if (lbl) lbl.textContent = n;
+  }
+
+  window.addEventListener("online", flushQueue);
+  setInterval(flushQueue, 20000);
+
+  function buildCortePayload(st, contado, esperado, diferencia, cierreTime, retiro, queda) {
+    var corteId = slugify(session.identificador) + "-corte" + st.corte + "-" + Date.now();
+    var movimientos = [];
+    st.log.forEach(function (op) {
+      if (op.type === "venta") {
+        op.items.forEach(function (it) {
+          movimientos.push({
+            timestamp: op.time, puesto_tipo: session.tipo, puesto_id: session.identificador,
+            voluntario: session.voluntario, corte_id: corteId, tipo_movimiento: "venta",
+            producto: it.name, cantidad: it.qty, motivo: "", monto: it.price * it.qty, metodo_pago: op.payMethod
+          });
+        });
+      } else if (op.type === "anulacion") {
+        op.items.forEach(function (it) {
+          movimientos.push({
+            timestamp: op.time, puesto_tipo: session.tipo, puesto_id: session.identificador,
+            voluntario: session.voluntario, corte_id: corteId, tipo_movimiento: "anulacion",
+            producto: it.name, cantidad: it.qty, motivo: "Anulación de venta", monto: it.price * it.qty, metodo_pago: ""
+          });
+        });
+      } else if (op.type === "reposicion") {
+        movimientos.push({
+          timestamp: op.time, puesto_tipo: session.tipo, puesto_id: session.identificador,
+          voluntario: session.voluntario, corte_id: corteId,
+          tipo_movimiento: op.delta < 0 ? "ajuste_manual" : "reposicion",
+          producto: op.name, cantidad: op.delta,
+          motivo: op.delta < 0 ? "Ajuste manual de stock" : "Reposición de stock",
+          monto: "", metodo_pago: ""
+        });
+      }
+    });
+
+    var ventas = st.log.filter(function (op) { return op.type === "venta"; }).map(function (op) {
+      return {
+        timestamp: op.time, puesto_tipo: session.tipo, puesto_id: session.identificador,
+        voluntario: session.voluntario, corte_id: corteId,
+        cant_items: op.items.length, monto_total: op.total, metodo_pago: op.payMethod,
+        estado: op.voided ? "anulada" : "activa"
+      };
+    });
+
+    var cierre = {
+      puesto_tipo: session.tipo, puesto_id: session.identificador, voluntario: session.voluntario,
+      corte_id: corteId, apertura: st.corteApertura, cierre: cierreTime,
+      caja_inicial: st.corteCajaInicial, efectivo_esperado: esperado, efectivo_contado: contado,
+      diferencia: diferencia, cant_ventas: st.totals.ventas,
+      monto_total_vendido: st.totals.efectivo + st.totals.transferencia + st.totals.tarjeta + st.totals.otro,
+      efectivo_retirado: retiro, efectivo_final_puesto: queda
+    };
+
+    return { token: puestoToken(), corte_id: corteId, movimientos: movimientos, ventas: ventas, cierre: cierre };
+  }
+
+  if (session) {
+    var persistedState = loadState(session.tipo, session.identificador);
+    if (persistedState) state[session.tipo] = persistedState;
+  }
+
+  var nav = {
+    screen: session ? (state[session.tipo].setupDone ? "menu" : "setup") : "login",
+    stand: session ? session.tipo : null,
+    cart: [], checkout: false, loginTipo: null
+  };
   var root = document.getElementById("app");
   var toastEl = document.getElementById("toast");
   var toastTimer = null;
@@ -471,11 +670,11 @@
     return "";
   }
 
-  function header(title, sub, chipHtml) {
+  function header(title, sub, chipHtml, noBack) {
     var standDef = nav.stand ? STANDS[nav.stand] : null;
     return (
       '<div class="topbar">' +
-        '<button class="backbtn" id="backBtn" aria-label="Volver">←</button>' +
+        (noBack ? "" : '<button class="backbtn" id="backBtn" aria-label="Volver">←</button>') +
         '<div class="topbar-title">' +
           (standDef ? '<div class="topbar-mark">' + standDef.icon + "</div>" : "") +
           "<div><h1>" + title + "</h1>" + (sub ? "<p>" + sub + "</p>" : "") + "</div>" +
@@ -491,8 +690,9 @@
   }
 
   function render() {
-    document.body.dataset.stand = nav.stand || "";
-    if (nav.screen === "select") return renderSelect();
+    saveState();
+    document.body.dataset.stand = nav.screen === "login" ? (nav.loginTipo || "") : (nav.stand || "");
+    if (nav.screen === "login") return renderLogin();
     if (nav.screen === "menu") return renderMenu();
     if (nav.screen === "setup") return renderSetup();
     if (nav.screen === "vender") return renderVender();
@@ -506,32 +706,70 @@
     if (b) b.addEventListener("click", fn);
   }
 
-  // ---------------- SELECT ----------------
-  function renderSelect() {
+  // ---------------- LOGIN (identificación de puesto) ----------------
+  function renderLogin() {
     var html = "";
     html += h("div", { class: "hero" },
       '<div class="hero-mark">⛺</div>' +
       "<h1>Caja Misionera</h1>" +
       "<p>Kermesse Familiar · Grupo Misionero — Colegio</p>"
     );
-    html += '<div class="eyebrow" style="padding-left:18px;">Elegí tu puesto</div>';
-    html += '<div class="stand-cards">';
-    Object.keys(STANDS).forEach(function (key) {
-      var s = STANDS[key];
-      html += h("button", { class: "stand-card c-" + key, "data-stand": key },
-        '<div class="mark">' + s.icon + "</div>" +
-        "<div><h2>" + s.label + "</h2><p>" + s.sub + "</p></div>" +
-        '<span class="chev">›</span>'
-      );
-    });
-    html += "</div>";
-    root.innerHTML = html;
-    root.querySelectorAll(".stand-card").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        nav.stand = btn.getAttribute("data-stand");
-        nav.screen = "menu";
-        render();
+    var tipo = nav.loginTipo;
+    if (!tipo) {
+      html += '<div class="eyebrow" style="padding-left:18px;">¿Qué puesto vas a operar?</div>';
+      html += '<div class="stand-cards">';
+      Object.keys(STANDS).forEach(function (key) {
+        var s = STANDS[key];
+        html += h("button", { class: "stand-card c-" + key, "data-stand": key },
+          '<div class="mark">' + s.icon + "</div>" +
+          "<div><h2>" + s.label + "</h2><p>" + s.sub + "</p></div>" +
+          '<span class="chev">›</span>'
+        );
       });
+      html += "</div>";
+      root.innerHTML = html;
+      root.querySelectorAll(".stand-card").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          nav.loginTipo = btn.getAttribute("data-stand");
+          render();
+        });
+      });
+      return;
+    }
+
+    var s = STANDS[tipo];
+    html += '<div class="eyebrow" style="padding-left:18px;">Identificá tu puesto</div>';
+    html += '<div class="set-row" style="margin:0 18px 10px;">' +
+      '<div class="head"><span class="icon">' + s.icon + '</span><span class="name">' + s.label + '</span></div>' +
+      '<label class="field-label">Identificador del puesto' +
+      '<input type="text" id="loginId" placeholder="Ej. ' + s.label + ' 1" maxlength="40"></label>' +
+      '<label class="field-label">Nombre del voluntario a cargo' +
+      '<input type="text" id="loginVoluntario" placeholder="Tu nombre" maxlength="40"></label>' +
+      "</div>";
+    html += '<div class="close-corte-wrap">' +
+      '<button class="link-btn" id="loginBack">‹ Elegir otro puesto</button>' +
+      '<button class="btn-block" id="btnIngresar" style="margin-top:8px;">Ingresar</button>' +
+      "</div>";
+    root.innerHTML = html;
+    document.getElementById("loginBack").addEventListener("click", function () { nav.loginTipo = null; render(); });
+    document.getElementById("loginId").addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") document.getElementById("loginVoluntario").focus();
+    });
+    document.getElementById("loginVoluntario").addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") document.getElementById("btnIngresar").click();
+    });
+    document.getElementById("btnIngresar").addEventListener("click", function () {
+      var idVal = document.getElementById("loginId").value.trim();
+      var volVal = document.getElementById("loginVoluntario").value.trim();
+      if (!idVal) { showToast("Ingresá un identificador para el puesto."); return; }
+      if (!volVal) { showToast("Ingresá el nombre del voluntario a cargo."); return; }
+      session = { tipo: tipo, identificador: idVal, voluntario: volVal, inicio: new Date().toISOString() };
+      saveSession();
+      nav.stand = tipo;
+      nav.screen = state[tipo].setupDone ? "menu" : "setup";
+      nav.loginTipo = null;
+      render();
+      showToast("Puesto identificado: " + idVal + " · " + volVal);
     });
   }
 
@@ -539,7 +777,7 @@
   function renderMenu() {
     var s = STANDS[nav.stand];
     var st = state[nav.stand];
-    var html = header(s.label, s.sub, chipCorte(st));
+    var html = header(s.label, session.identificador + " · " + session.voluntario, chipCorte(st), true);
     html += '<div class="menu-list">';
     html += h("button", { class: "menu-btn primary", id: "goVender" },
       '<div class="mark">🛒</div><div><h3>Vender</h3><p>' +
@@ -550,8 +788,22 @@
     html += h("button", { class: "menu-btn", id: "goSeteo" },
       '<div class="mark">🧰</div><div><h3>Seteo de stock y caja</h3><p>Reposición y arqueo</p></div><span class="chev">›</span>');
     html += "</div>";
+    html += '<div style="padding:2px 18px 14px;text-align:center;">' +
+      '<button class="link-btn" id="cambiarPuesto" style="margin:0 auto;">Cambiar de puesto ›</button>' +
+      "</div>";
     root.innerHTML = html;
-    bindBack(function () { nav.screen = "select"; nav.stand = null; render(); });
+    document.getElementById("cambiarPuesto").addEventListener("click", function () {
+      if (pendingCount() > 0) {
+        showToast("Hay " + pendingCount() + " corte(s) sin sincronizar. Sincronizalos antes de cambiar de puesto (Seteo → Sincronización con Sheets).");
+        return;
+      }
+      localStorage.removeItem(SESSION_KEY);
+      session = null;
+      nav.stand = null;
+      nav.screen = "login";
+      nav.loginTipo = null;
+      render();
+    });
     document.getElementById("goVender").addEventListener("click", function () {
       nav.screen = st.setupDone ? "vender" : "setup";
       render();
@@ -594,7 +846,7 @@
       inp.addEventListener("change", function () {
         var p = st.products.filter(function (x) { return x.id === inp.getAttribute("data-setup-stock"); })[0];
         var val = parseInt(inp.value, 10);
-        if (!isNaN(val) && val >= 0) { p.stock = val; p.level = levelFor(p.stock, p.thresholds); }
+        if (!isNaN(val) && val >= 0) { p.stock = val; p.level = levelFor(p.stock, p.thresholds); saveState(); }
         else { inp.value = p.stock; }
       });
     });
@@ -604,8 +856,10 @@
       var caja = parseFloat(cajaInput.value);
       if (isNaN(caja) || caja < 0) caja = 0;
       st.cajaInicial = caja;
+      st.corteCajaInicial = caja;
+      st.corteApertura = new Date().toISOString();
       st.setupDone = true;
-      nav.screen = "vender";
+      nav.screen = "menu";
       render();
       showToast("Corte 1 iniciado con " + money(caja) + " en caja.");
     });
@@ -895,7 +1149,15 @@
       });
     }
     html += "</div>";
-    html += '<div class="close-corte-wrap"><button class="btn-block" id="btnCerrarCorte">Cerrar corte y empezar Corte ' + (st.corte + 1) + "</button></div>";
+    var esperadoCierre = st.corteCajaInicial + t.efectivo;
+    html += '<div class="close-corte-wrap">';
+    html += '<div class="cash-panel" style="margin:0 0 10px;">' +
+      '<div class="cash-row"><span class="k">Efectivo esperado (este corte)</span><span class="v">' + money(esperadoCierre) + "</span></div>" +
+      '<div class="cash-input-row"><span class="k">Efectivo contado para cerrar</span><input type="number" min="0" step="500" id="corteContadoInput" placeholder="0"></div>' +
+      '<div class="cash-input-row"><span class="k">Efectivo que retirás del puesto</span><input type="number" min="0" step="500" id="corteRetiroInput" placeholder="0"></div>' +
+      '<div style="font-size:12px;color:var(--text-muted);padding:6px 2px 0;line-height:1.4;">Lo que no retirés queda como caja inicial del próximo corte.</div>' +
+      "</div>";
+    html += '<button class="btn-block" id="btnCerrarCorte">Cerrar corte y empezar Corte ' + (st.corte + 1) + "</button></div>";
     body.innerHTML = html;
 
     body.querySelectorAll(".void-btn").forEach(function (b) {
@@ -903,14 +1165,32 @@
         var idx = parseInt(b.getAttribute("data-void"), 10);
         voidSale(st.log[idx]);
         renderHistorial();
+        saveState();
         showToast("Venta anulada.");
       });
     });
     document.getElementById("btnCerrarCorte").addEventListener("click", function () {
+      var contadoInput = document.getElementById("corteContadoInput");
+      var contado = parseFloat(contadoInput.value);
+      if (isNaN(contado) || contado < 0) { showToast("Ingresá el efectivo contado antes de cerrar el corte."); return; }
+      var retiroInput = document.getElementById("corteRetiroInput");
+      var retiro = parseFloat(retiroInput.value);
+      if (isNaN(retiro) || retiro < 0) retiro = 0;
+      if (retiro > contado) { showToast("El retiro no puede ser mayor al efectivo contado."); return; }
+      var queda = contado - retiro;
+      var cierreTime = new Date().toISOString();
+      var esperado = st.corteCajaInicial + st.totals.efectivo;
+      var diferencia = esperado - contado;
+      var payload = buildCortePayload(st, contado, esperado, diferencia, cierreTime, retiro, queda);
+      enqueuePayload(payload);
+      flushQueue();
+
       st.corte += 1;
+      st.corteCajaInicial = queda;
+      st.corteApertura = cierreTime;
       st.totals = { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 };
       st.log = [];
-      showToast("Corte cerrado. Empezó el Corte " + st.corte + ".");
+      showToast("Corte cerrado" + (retiro > 0 ? " · retiraste " + money(retiro) : "") + ". Empezó el Corte " + st.corte + ".");
       render();
     });
   }
@@ -961,8 +1241,39 @@
     }
     html += "</div>";
 
+    html += '<div class="eyebrow">Sincronización con Sheets</div>';
+    html += '<div class="cash-panel">' +
+      '<div class="cash-row"><span class="k">Token de este puesto</span><span class="v" style="font-variant-numeric:normal;">' + puestoToken() + "</span></div>" +
+      '<label class="field-label">URL del Web App (Apps Script)' +
+      '<input type="text" id="webAppUrlInput" placeholder="https://script.google.com/macros/s/AKfycb.../exec" value="' + (getWebAppUrl() || "") + '"></label>' +
+      '<div class="cash-row"><span class="k">Pendientes de enviar</span><span class="v" id="pendingCountLbl">' + pendingCount() + "</span></div>" +
+      '<div style="display:flex;gap:8px;margin-top:10px;">' +
+      '<button class="btn-block" id="btnSaveWebAppUrl" style="flex:1;">Guardar URL</button>' +
+      '<button class="btn-block" id="btnRetrySync" style="flex:1;background:var(--surface-sunken);color:var(--text);border:1px solid var(--border);">Reintentar ahora</button>' +
+      "</div></div>";
+
     root.innerHTML = html;
     bindBack(function () { nav.screen = "menu"; render(); });
+    var saveUrlBtn = document.getElementById("btnSaveWebAppUrl");
+    saveUrlBtn.addEventListener("click", function () {
+      var v = document.getElementById("webAppUrlInput").value.trim();
+      setWebAppUrl(v);
+      showToast(v ? "URL guardada." : "URL borrada.");
+      var pendingBefore = pendingCount();
+      flushQueue().then(function () {
+        if (pendingBefore > 0) {
+          showToast(pendingCount() === 0 ? "Sincronización al día." : "Todavía no se pudo sincronizar. Revisá la URL o la conexión.");
+        }
+      });
+    });
+    var retryBtn = document.getElementById("btnRetrySync");
+    retryBtn.addEventListener("click", function () {
+      if (!pendingCount()) { showToast("No hay cortes pendientes."); return; }
+      showToast("Reintentando sincronización...");
+      flushQueue().then(function () {
+        showToast(pendingCount() === 0 ? "Sincronización al día." : "Todavía no se pudo sincronizar. Revisá la URL o la conexión.");
+      });
+    });
     root.querySelectorAll("[data-prod-switch]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var p = st.products.filter(function (x) { return x.id === btn.getAttribute("data-prod-switch"); })[0];
@@ -975,7 +1286,7 @@
       inp.addEventListener("change", function () {
         var p = st.products.filter(function (x) { return x.id === inp.getAttribute("data-price"); })[0];
         var val = parseFloat(inp.value);
-        if (!isNaN(val) && val >= 0) { p.price = val; showToast("Precio de " + p.name + " actualizado a " + money(val) + "."); }
+        if (!isNaN(val) && val >= 0) { p.price = val; saveState(); showToast("Precio de " + p.name + " actualizado a " + money(val) + "."); }
         else { inp.value = p.price; }
       });
     });
@@ -1000,6 +1311,12 @@
     });
   }
 
+  document.getElementById("syncBadge").addEventListener("click", function () {
+    showToast("Reintentando sincronización...");
+    flushQueue();
+  });
+  updateSyncBadge();
+  flushQueue();
   render();
 })();
 </script>
