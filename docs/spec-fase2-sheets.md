@@ -84,6 +84,17 @@ Una fila por cada corte cerrado.
 
 Implementación: ver [`appsscript/Code.gs`](../appsscript/Code.gs) y la guía de despliegue en [deploy-apps-script.md](deploy-apps-script.md).
 
+## 4bis. Cierre obligatorio al cambiar de puesto + pestaña "Cierre de puesto" (2026-08-22)
+
+Se detectó un bug: el estado operativo (`state[tipo]`) vivía en memoria del navegador y no se recargaba al identificarse con un **nuevo** identificador del mismo tipo de puesto dentro de la misma sesión de página (ej.: cerrar "Buffet 1" con "Cambiar de puesto" y volver a entrar como "Buffet 2") — el stock, las ventas y los cortes del puesto anterior quedaban pisando al nuevo. Se corrigió: al identificarse, la app siempre busca el estado persistido para ese `tipo:identificador` exacto (`loadState`) y, si no existe, arranca de cero (`freshStandState`) en vez de reusar lo que hubiera en memoria.
+
+Aprovechando la corrección, se decidió además:
+
+- **"Cambiar de puesto" ya no es instantáneo si el puesto arrancó a operar** (`setupDone`): fuerza pasar por la pantalla de Resumen en un modo especial ("cerrar puesto") antes de soltar la sesión. Si el puesto todavía no terminó el seteo inicial, cambiar sigue siendo instantáneo (no hay nada que cerrar).
+- **Se sacó el campo de efectivo contado de los cierres de corte intermedios** (los que arrancan el siguiente corte del mismo puesto): esos cortes cierran directo usando el efectivo esperado, sin pedir contar. Sigue siendo **obligatorio en el cierre final de puesto** (el que dispara "Cambiar de puesto" o el botón "Cerrar puesto" de Seteo), porque ahí sí importa tener un número real para la entrega de caja. El contador de la pantalla Seteo (que solo muestra sobrante/faltante informativo, sin bloquear nada) no se tocó — es la única herramienta de conteo disponible durante los cortes intermedios.
+- Al cerrar un puesto, además del payload de corte normal (igual que siempre, a Movimientos/Resumen por venta/Resumen por cierre), se arma un segundo objeto `cierrePuesto` con los **totales acumulados de toda la sesión** del puesto (todos los cortes, no solo el último) — cantidad de cortes, ventas y montos por método de pago, caja inicial del puesto, efectivo contado/retirado en el cierre final — y se manda en el mismo POST. El backend lo escribe en una pestaña nueva, **"Cierre de puesto"**, una fila por cada vez que un puesto se cierra para cambiar. Sirve para tener de un vistazo el resumen de todo lo que trabajó cada puesto/voluntario, sin tener que sumar los cortes individuales a mano.
+- Al cerrar el puesto también se borra su estado persistido en `localStorage` (`clearState`) — si alguien vuelve a entrar más tarde con el mismo identificador, arranca el seteo de cero, no retoma el corte anterior.
+
 ## 5. Nota sobre dónde conviene construir esto
 
 La parte de Apps Script requiere autenticarse con una cuenta de Google real y desplegar el script como Web App — un flujo que conviene hacer desde una terminal local (por ejemplo con Claude Code y la herramienta `clasp` de Google), ya que necesita abrir el navegador para el login de Google y no es algo que se pueda automatizar desde este entorno en la nube. El resto (cambios al front-end en `app/index.html`) puede construirse en cualquiera de los dos entornos.

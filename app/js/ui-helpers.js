@@ -36,8 +36,9 @@ function opRowHtml(op, idx, allowVoid) {
       itemsSummary(op.items) + " · -" + money(op.total) + "</span></div>";
   }
   if (op.type === "reposicion") {
+    var stockInfo = op.stockResultante === undefined ? "" : " (" + op.stockResultante + ")";
     return '<div class="op-row"><span class="time">' + op.time + '</span><span class="desc">↑ Reposición · ' +
-      op.name + " " + (op.delta > 0 ? "+" : "") + op.delta + "</span></div>";
+      op.name + " " + (op.delta > 0 ? "+" : "") + op.delta + stockInfo + "</span></div>";
   }
   return "";
 }

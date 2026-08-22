@@ -41,7 +41,7 @@ Esto crea **una Google Sheet nueva** y un proyecto de Apps Script ligado a ella,
 clasp push
 ```
 
-## 6. Crear las tres pestañas con encabezados
+## 6. Crear las pestañas con encabezados
 
 ```powershell
 clasp open
@@ -51,7 +51,9 @@ Esto abre el editor de Apps Script en el navegador. Ahí:
 1. Elegí la función `setupSheets` en el desplegable de funciones (arriba).
 2. Tocá **Ejecutar**.
 3. La primera vez va a pedir autorizar permisos (acceso a Google Sheets) — aceptá.
-4. Verificá en la planilla (`clasp open --webapp` no aplica acá; abrila desde Drive) que aparecieron las pestañas **Movimientos**, **Resumen por venta** y **Resumen por cierre** con sus encabezados.
+4. Verificá en la planilla (`clasp open --webapp` no aplica acá; abrila desde Drive) que aparecieron las pestañas **Movimientos**, **Resumen por venta**, **Resumen por cierre** y **Cierre de puesto** con sus encabezados.
+
+`setupSheets` es seguro de volver a ejecutar (no borra filas existentes, solo crea lo que falte) — si ya tenías la planilla desplegada de antes y le sumaste la pestaña "Cierre de puesto" al código, volvé a correr esta función para que se cree.
 
 ## 7. Desplegar como Web App
 
@@ -67,7 +69,7 @@ Copiá la URL que termina en `/exec` — esa es la que va en la app.
 
 ## 8. Conectar la app
 
-En la app (`app/index.html`), pantalla **Menú → Seteo de stock y caja → Sincronización con Sheets**, pegá esa URL en el campo "URL del Web App" y tocá **Guardar URL**. Se guarda en el navegador de ese dispositivo (`localStorage`), no en el código — cada dispositivo/puesto la configura una vez.
+En la app (`app/index.html`), pantalla **Menú → Caja → Sincronización con Sheets**, pegá esa URL en el campo "URL del Web App" y tocá **Guardar URL**. Se guarda en el navegador de ese dispositivo (`localStorage`), no en el código — cada dispositivo/puesto la configura una vez.
 
 ## Actualizar el script más adelante
 

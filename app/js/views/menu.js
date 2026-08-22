@@ -9,31 +9,26 @@ function renderMenu() {
     '<div class="mark">🛒</div><div><h3>Vender</h3><p>' +
     (st.setupDone ? "Historial de ventas y nueva venta" : "Configurar stock y caja para empezar") +
     "</p></div><span class=\"chev\">›</span>");
-  html += h("button", { class: "menu-btn", id: "goResumen" },
-    '<div class="mark">📊</div><div><h3>Resumen de caja</h3><p>Totales del corte y cierre</p></div><span class="chev">›</span>');
-  html += h("button", { class: "menu-btn", id: "goSeteo" },
-    '<div class="mark">🧰</div><div><h3>Seteo de stock y caja</h3><p>Reposición y arqueo</p></div><span class="chev">›</span>');
+  html += h("button", { class: "menu-btn", id: "goCaja" },
+    '<div class="mark">📊</div><div><h3>Caja</h3><p>Totales, cierre de corte/puesto y Sheets</p></div><span class="chev">›</span>');
+  html += h("button", { class: "menu-btn", id: "goSeteoStock" },
+    '<div class="mark">📦</div><div><h3>Stock</h3><p>Precios y reposición</p></div><span class="chev">›</span>');
   html += "</div>";
   html += '<div style="padding:2px 18px 14px;text-align:center;">' +
     '<button class="link-btn" id="cambiarPuesto" style="margin:0 auto;">Cambiar de puesto ›</button>' +
     "</div>";
   root.innerHTML = html;
   document.getElementById("cambiarPuesto").addEventListener("click", function () {
-    if (pendingCount() > 0) {
-      showToast("Hay " + pendingCount() + " corte(s) sin sincronizar. Sincronizalos antes de cambiar de puesto (Seteo → Sincronización con Sheets).");
-      return;
-    }
-    localStorage.removeItem(SESSION_KEY);
-    session = null;
-    nav.stand = null;
-    nav.screen = "login";
-    nav.loginTipo = null;
+    if (!st.setupDone) { switchPuesto(); return; }
+    nav.closingPuesto = true;
+    nav.screen = "caja";
     render();
+    showToast("Para cambiar de puesto, primero cerrá la caja de este puesto.");
   });
   document.getElementById("goVender").addEventListener("click", function () {
     nav.screen = st.setupDone ? "vender" : "setup";
     render();
   });
-  document.getElementById("goResumen").addEventListener("click", function () { nav.screen = "resumen"; render(); });
-  document.getElementById("goSeteo").addEventListener("click", function () { nav.screen = "seteo"; render(); });
+  document.getElementById("goCaja").addEventListener("click", function () { nav.screen = "caja"; render(); });
+  document.getElementById("goSeteoStock").addEventListener("click", function () { nav.screen = "seteoStock"; render(); });
 }

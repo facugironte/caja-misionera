@@ -3,8 +3,11 @@
 var fmt = new Intl.NumberFormat("es-AR");
 function money(n) { return "$" + fmt.format(Math.round(n)); }
 
+function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
 function nowLabel() {
-  return new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  var d = new Date();
+  return pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
 }
 
 function slugify(s) {

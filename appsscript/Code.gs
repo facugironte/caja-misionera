@@ -10,11 +10,13 @@
 var SHEET_MOVIMIENTOS = "Movimientos";
 var SHEET_VENTAS = "Resumen por venta";
 var SHEET_CIERRES = "Resumen por cierre";
+var SHEET_CIERRE_PUESTO = "Cierre de puesto";
 
 var HEADERS = {};
 HEADERS[SHEET_MOVIMIENTOS] = ["timestamp", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "tipo_movimiento", "producto", "cantidad", "motivo", "monto", "metodo_pago"];
 HEADERS[SHEET_VENTAS] = ["timestamp", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "cant_items", "monto_total", "metodo_pago", "estado"];
 HEADERS[SHEET_CIERRES] = ["puesto_tipo", "puesto_id", "voluntario", "corte_id", "apertura", "cierre", "caja_inicial", "efectivo_esperado", "efectivo_contado", "diferencia", "cant_ventas", "monto_total_vendido", "efectivo_retirado", "efectivo_final_puesto"];
+HEADERS[SHEET_CIERRE_PUESTO] = ["puesto_tipo", "puesto_id", "voluntario", "sesion_inicio", "sesion_fin", "cant_cortes", "cant_ventas", "monto_efectivo", "monto_transferencia", "monto_tarjeta", "monto_otro", "monto_total", "caja_inicial_puesto", "efectivo_contado_final", "efectivo_retirado_final"];
 
 /**
  * Ejecutar una vez a mano desde el editor de Apps Script (menú Ejecutar > setupSheets)
@@ -42,6 +44,7 @@ function doPost(e) {
     appendRows_(ss, SHEET_MOVIMIENTOS, data.movimientos || []);
     appendRows_(ss, SHEET_VENTAS, data.ventas || []);
     if (data.cierre) appendRows_(ss, SHEET_CIERRES, [data.cierre]);
+    if (data.cierrePuesto) appendRows_(ss, SHEET_CIERRE_PUESTO, [data.cierrePuesto]);
     return jsonOutput_({ ok: true, corte_id: data.corte_id });
   } catch (err) {
     return jsonOutput_({ ok: false, error: String(err) });

@@ -58,6 +58,8 @@ function renderLogin() {
     if (!volVal) { showToast("Ingresá el nombre del voluntario a cargo."); return; }
     session = { tipo: tipo, identificador: idVal, voluntario: volVal, inicio: new Date().toISOString() };
     saveSession();
+    var persisted = loadState(tipo, idVal);
+    state[tipo] = persisted || freshStandState(tipo);
     nav.stand = tipo;
     nav.screen = state[tipo].setupDone ? "menu" : "setup";
     nav.loginTipo = null;

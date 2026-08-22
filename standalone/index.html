@@ -291,14 +291,28 @@
     background: #fff; transition: transform .15s ease;
   }
   .switch[data-on="true"]::after { transform: translateX(18px); }
+  .switch-sm { width: 34px; height: 20px; flex: none; }
+  .switch-sm::after { width: 16px; height: 16px; top: 2px; left: 2px; }
+  .switch-sm[data-on="true"]::after { transform: translateX(14px); }
 
   .set-row {
     background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    padding: 12px 14px; margin: 0 18px 10px; display: flex; flex-direction: column; gap: 8px;
+    padding: 10px 12px; margin: 0 18px 8px; display: flex; flex-direction: column; gap: 6px;
   }
-  .set-row .head { display: flex; align-items: center; gap: 10px; }
-  .set-row .icon { font-size: 20px; flex: none; }
+  .set-row .head { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+  .set-row .icon { font-size: 20px; flex: none; line-height: 1.3; }
   .set-row .name { font-weight: 600; font-size: 14px; flex: 1; }
+  .set-row .name-stock { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; flex: 1; min-width: 0; padding-top: 2px; }
+  .set-row .price-display, .set-row .expand-chev { margin-top: 2px; }
+  .set-row .name-stock .name { flex: none; }
+  .set-row .price-display {
+    font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--stand-accent);
+    font-variant-numeric: tabular-nums; flex: none;
+  }
+  .set-row .expand-chev { color: var(--text-faint); font-size: 12px; flex: none; width: 14px; text-align: center; }
+  .set-row .stock-edit { padding-top: 8px; margin-top: 2px; border-top: 1px solid var(--border); }
+  .set-row .stock-edit .mini-toggle { justify-content: flex-start; }
+  .set-row .stock-edit .mini-toggle .lbl { flex: none; width: 150px; }
   .set-row .price-field {
     display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-muted); flex: none;
   }
@@ -307,7 +321,13 @@
     font-size: 16px; background: var(--surface-sunken); color: var(--text); text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  .set-row .stock-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .set-row .stock-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .qty-group { display: flex; align-items: center; gap: 8px; }
+  .qty-num-input {
+    width: 56px; height: 40px; border: 1px solid var(--border); border-radius: 10px; padding: 0 4px;
+    font-size: 15px; background: var(--surface-sunken); color: var(--text); text-align: center;
+    font-variant-numeric: tabular-nums; flex: none;
+  }
   .cash-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin: 8px 18px 20px; }
   .cash-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 13.5px; }
   .cash-row .k { color: var(--text-muted); }
@@ -368,8 +388,11 @@
 var fmt = new Intl.NumberFormat("es-AR");
 function money(n) { return "$" + fmt.format(Math.round(n)); }
 
+function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
 function nowLabel() {
-  return new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  var d = new Date();
+  return pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
 }
 
 function slugify(s) {
@@ -443,22 +466,26 @@ var PAY_METHODS = [
 
 "use strict";
 
-var state = {};
-Object.keys(STANDS).forEach(function (key) {
-  state[key] = {
+function freshStandState(key) {
+  return {
     corte: 1,
     setupDone: false,
     cajaInicial: 0,
     corteApertura: null,
     corteCajaInicial: 0,
     totals: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 },
-    cumulative: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 },
+    cumulative: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0, retirado: 0 },
     log: [],
     counted: null,
     products: STANDS[key].products.map(function (p) {
       return Object.assign({}, p, { level: levelFor(p.stock, p.thresholds) });
     })
   };
+}
+
+var state = {};
+Object.keys(STANDS).forEach(function (key) {
+  state[key] = freshStandState(key);
 });
 
 function stateKey(tipo, identificador) {
@@ -473,6 +500,9 @@ function loadState(tipo, identificador) {
     var raw = localStorage.getItem(stateKey(tipo, identificador));
     return raw ? JSON.parse(raw) : null;
   } catch (e) { return null; }
+}
+function clearState(tipo, identificador) {
+  try { localStorage.removeItem(stateKey(tipo, identificador)); } catch (e) {}
 }
 
 "use strict";
@@ -620,6 +650,18 @@ function buildCortePayload(st, contado, esperado, diferencia, cierreTime, retiro
   return { token: puestoToken(), corte_id: corteId, movimientos: movimientos, ventas: ventas, cierre: cierre };
 }
 
+function buildCierrePuestoPayload(st, contado, retiro, cierreTime) {
+  var total = st.cumulative.efectivo + st.cumulative.transferencia + st.cumulative.tarjeta + st.cumulative.otro;
+  return {
+    puesto_tipo: session.tipo, puesto_id: session.identificador, voluntario: session.voluntario,
+    sesion_inicio: session.inicio, sesion_fin: cierreTime,
+    cant_cortes: st.corte, cant_ventas: st.cumulative.ventas,
+    monto_efectivo: st.cumulative.efectivo, monto_transferencia: st.cumulative.transferencia,
+    monto_tarjeta: st.cumulative.tarjeta, monto_otro: st.cumulative.otro, monto_total: total,
+    caja_inicial_puesto: st.cajaInicial, efectivo_contado_final: contado, efectivo_retirado_final: retiro
+  };
+}
+
 "use strict";
 
 function h(tag, attrs, html) {
@@ -658,8 +700,9 @@ function opRowHtml(op, idx, allowVoid) {
       itemsSummary(op.items) + " · -" + money(op.total) + "</span></div>";
   }
   if (op.type === "reposicion") {
+    var stockInfo = op.stockResultante === undefined ? "" : " (" + op.stockResultante + ")";
     return '<div class="op-row"><span class="time">' + op.time + '</span><span class="desc">↑ Reposición · ' +
-      op.name + " " + (op.delta > 0 ? "+" : "") + op.delta + "</span></div>";
+      op.name + " " + (op.delta > 0 ? "+" : "") + op.delta + stockInfo + "</span></div>";
   }
   return "";
 }
@@ -747,6 +790,8 @@ function renderLogin() {
     if (!volVal) { showToast("Ingresá el nombre del voluntario a cargo."); return; }
     session = { tipo: tipo, identificador: idVal, voluntario: volVal, inicio: new Date().toISOString() };
     saveSession();
+    var persisted = loadState(tipo, idVal);
+    state[tipo] = persisted || freshStandState(tipo);
     nav.stand = tipo;
     nav.screen = state[tipo].setupDone ? "menu" : "setup";
     nav.loginTipo = null;
@@ -766,33 +811,28 @@ function renderMenu() {
     '<div class="mark">🛒</div><div><h3>Vender</h3><p>' +
     (st.setupDone ? "Historial de ventas y nueva venta" : "Configurar stock y caja para empezar") +
     "</p></div><span class=\"chev\">›</span>");
-  html += h("button", { class: "menu-btn", id: "goResumen" },
-    '<div class="mark">📊</div><div><h3>Resumen de caja</h3><p>Totales del corte y cierre</p></div><span class="chev">›</span>');
-  html += h("button", { class: "menu-btn", id: "goSeteo" },
-    '<div class="mark">🧰</div><div><h3>Seteo de stock y caja</h3><p>Reposición y arqueo</p></div><span class="chev">›</span>');
+  html += h("button", { class: "menu-btn", id: "goCaja" },
+    '<div class="mark">📊</div><div><h3>Caja</h3><p>Totales, cierre de corte/puesto y Sheets</p></div><span class="chev">›</span>');
+  html += h("button", { class: "menu-btn", id: "goSeteoStock" },
+    '<div class="mark">📦</div><div><h3>Stock</h3><p>Precios y reposición</p></div><span class="chev">›</span>');
   html += "</div>";
   html += '<div style="padding:2px 18px 14px;text-align:center;">' +
     '<button class="link-btn" id="cambiarPuesto" style="margin:0 auto;">Cambiar de puesto ›</button>' +
     "</div>";
   root.innerHTML = html;
   document.getElementById("cambiarPuesto").addEventListener("click", function () {
-    if (pendingCount() > 0) {
-      showToast("Hay " + pendingCount() + " corte(s) sin sincronizar. Sincronizalos antes de cambiar de puesto (Seteo → Sincronización con Sheets).");
-      return;
-    }
-    localStorage.removeItem(SESSION_KEY);
-    session = null;
-    nav.stand = null;
-    nav.screen = "login";
-    nav.loginTipo = null;
+    if (!st.setupDone) { switchPuesto(); return; }
+    nav.closingPuesto = true;
+    nav.screen = "caja";
     render();
+    showToast("Para cambiar de puesto, primero cerrá la caja de este puesto.");
   });
   document.getElementById("goVender").addEventListener("click", function () {
     nav.screen = st.setupDone ? "vender" : "setup";
     render();
   });
-  document.getElementById("goResumen").addEventListener("click", function () { nav.screen = "resumen"; render(); });
-  document.getElementById("goSeteo").addEventListener("click", function () { nav.screen = "seteo"; render(); });
+  document.getElementById("goCaja").addEventListener("click", function () { nav.screen = "caja"; render(); });
+  document.getElementById("goSeteoStock").addEventListener("click", function () { nav.screen = "seteoStock"; render(); });
 }
 
 "use strict";
@@ -806,7 +846,7 @@ function renderSetup() {
   var controlled = st.products.filter(function (p) { return p.controlled; });
   html += '<div class="eyebrow">Stock inicial</div>';
   if (!controlled.length) {
-    html += '<p class="note">Ningún producto de este puesto controla stock todavía. Podés activarlo más tarde desde Seteo de stock y caja.</p>';
+    html += '<p class="note">Ningún producto de este puesto controla stock todavía. Podés activarlo más tarde desde Stock.</p>';
   } else {
     controlled.forEach(function (p) {
       html += '<div class="set-row" data-id="' + p.id + '">' +
@@ -867,7 +907,7 @@ function renderVender() {
   document.getElementById("goCarrito").addEventListener("click", function () {
     nav.cart = []; nav.checkout = false; nav.screen = "carrito"; render();
   });
-  document.getElementById("goHistorialLink").addEventListener("click", function () { nav.screen = "resumen"; render(); });
+  document.getElementById("goHistorialLink").addEventListener("click", function () { nav.screen = "caja"; render(); });
   renderRecentSales();
 }
 
@@ -875,15 +915,27 @@ function renderRecentSales() {
   var st = state[nav.stand];
   var wrap = document.getElementById("recentSales");
   if (!wrap) return;
-  var recent = st.log.slice(-6).reverse();
+  var recent = st.log
+    .map(function (op, idx) { return { op: op, idx: idx }; })
+    .filter(function (item) { return item.op.type === "venta" || item.op.type === "anulacion"; })
+    .reverse();
   if (!recent.length) {
     wrap.innerHTML = '<div class="op-empty">Todavía no hay ventas en este corte.</div>';
     return;
   }
   var html = '<div class="op-list">';
-  recent.forEach(function (op) { html += opRowHtml(op, null, false); });
+  recent.forEach(function (item) { html += opRowHtml(item.op, item.idx, true); });
   html += "</div>";
   wrap.innerHTML = html;
+  wrap.querySelectorAll(".void-btn").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var idx = parseInt(b.getAttribute("data-void"), 10);
+      voidSale(st.log[idx]);
+      renderRecentSales();
+      saveState();
+      showToast("Venta anulada.");
+    });
+  });
 }
 
 "use strict";
@@ -1102,76 +1154,192 @@ function voidSale(entry) {
 
 "use strict";
 
-function renderResumen() {
+function renderCaja() {
   var s = STANDS[nav.stand];
   var st = state[nav.stand];
-  var html = header("Resumen de caja", s.label, chipCorte(st));
-  html += '<div id="resumenBody"></div>';
+  var html = header("Caja", s.label, chipCorte(st));
+  if (nav.closingPuesto) {
+    html += '<p class="note">Vas a cambiar de puesto: este va a ser el <strong>último corte</strong> de ' + session.identificador + '. Contá bien el efectivo antes de cerrar.</p>';
+  }
+  html += '<div id="cajaBody"></div>';
   root.innerHTML = html;
-  bindBack(function () { nav.screen = "menu"; render(); });
-  renderHistorial();
+  bindBack(function () { nav.closingPuesto = false; nav.cajaMovimientosExpanded = false; nav.screen = "menu"; render(); });
+  renderCajaBody();
 }
 
-function renderHistorial() {
+var CAJA_MOVIMIENTOS_PAGE = 5;
+
+function renderCajaBody() {
   var st = state[nav.stand];
   var t = st.totals;
   var total = t.efectivo + t.transferencia + t.tarjeta + t.otro;
-  var body = document.getElementById("resumenBody");
-  var html = '<div class="stat-grid">' +
-    stat("Ventas", fmt.format(t.ventas)) +
-    stat("Efectivo", money(t.efectivo)) +
-    stat("Transferencia", money(t.transferencia)) +
-    stat("Tarjeta", money(t.tarjeta)) +
-    stat("Otro", money(t.otro)) +
-    '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
-    "</div>";
-  html += '<div class="eyebrow">Movimientos — Corte ' + st.corte + "</div>";
-  html += '<div class="op-list">';
-  if (!st.log.length) {
-    html += '<div class="op-empty">Todavía no hay movimientos en este corte.</div>';
-  } else {
-    st.log.slice().reverse().forEach(function (op, idx) {
-      var realIdx = st.log.length - 1 - idx;
-      html += opRowHtml(op, realIdx, true);
-    });
-  }
-  html += "</div>";
+  var body = document.getElementById("cajaBody");
   var esperadoCierre = st.corteCajaInicial + t.efectivo;
-  html += '<div class="close-corte-wrap">';
-  html += '<div class="cash-panel" style="margin:0 0 10px;">' +
-    '<div class="cash-row"><span class="k">Efectivo esperado (este corte)</span><span class="v">' + money(esperadoCierre) + "</span></div>" +
-    '<div class="cash-input-row"><span class="k">Efectivo contado para cerrar</span><input type="number" min="0" step="500" id="corteContadoInput" placeholder="0"></div>' +
-    '<div class="cash-input-row"><span class="k">Efectivo que retirás del puesto</span><input type="number" min="0" step="500" id="corteRetiroInput" placeholder="0"></div>' +
-    '<div style="font-size:12px;color:var(--text-muted);padding:6px 2px 0;line-height:1.4;">Lo que no retirés queda como caja inicial del próximo corte.</div>' +
-    "</div>";
-  html += '<button class="btn-block" id="btnCerrarCorte">Cerrar corte y empezar Corte ' + (st.corte + 1) + "</button></div>";
+  var html = "";
+
+  if (nav.closingPuesto) {
+    var ventasTotalMonto = st.cumulative.efectivo + st.cumulative.transferencia + st.cumulative.tarjeta + st.cumulative.otro;
+    html += '<div class="stat-grid">' +
+      stat("Ventas", fmt.format(t.ventas)) +
+      stat("Efectivo", money(t.efectivo)) +
+      stat("Transferencia", money(t.transferencia)) +
+      stat("Tarjeta", money(t.tarjeta)) +
+      stat("Otro", money(t.otro)) +
+      '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
+      "</div>";
+
+    html += '<div class="eyebrow">Resumen del puesto</div>';
+    html += '<div class="cash-panel">' +
+      '<div class="cash-row"><span class="k">Cantidad de ventas totales</span><span class="v">' + fmt.format(st.cumulative.ventas) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Efectivo inicial</span><span class="v">' + money(st.cajaInicial) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Ventas efectivo</span><span class="v">' + money(st.cumulative.efectivo) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Ventas transferencias</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Ventas tarjetas</span><span class="v">' + money(st.cumulative.tarjeta) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Ventas otro</span><span class="v">' + money(st.cumulative.otro) + "</span></div>" +
+      '<div class="cash-row"><span class="k"><strong>Ventas totales</strong></span><span class="v">' + money(ventasTotalMonto) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Efectivo retirado</span><span class="v">' + money(st.cumulative.retirado || 0) + "</span></div>" +
+      "</div>";
+
+    html += '<div class="close-corte-wrap">';
+    html += '<div class="cash-panel" style="margin:0 0 10px;">' +
+      '<div class="cash-row"><span class="k">Efectivo esperado (este corte)</span><span class="v">' + money(esperadoCierre) + "</span></div>" +
+      '<div class="cash-input-row"><span class="k">Efectivo que retirás del puesto</span><input type="number" min="0" step="500" id="corteRetiroInput" placeholder="0"></div>' +
+      '<div id="cierreDiffBadge"></div>' +
+      '<div style="font-size:12px;color:var(--text-muted);padding:6px 2px 0;line-height:1.4;">Es el cierre final del puesto: contá todo el efectivo y ponelo acá — se retira entero, no queda nada para un corte siguiente.</div>' +
+      "</div>";
+    html += '<button class="btn-block" id="btnCerrarCorte">Cerrar puesto y salir</button></div>';
+  } else {
+    html += '<div class="stat-grid">' +
+      stat("Ventas", fmt.format(t.ventas)) +
+      stat("Efectivo", money(t.efectivo)) +
+      stat("Transferencia", money(t.transferencia)) +
+      stat("Tarjeta", money(t.tarjeta)) +
+      stat("Otro", money(t.otro)) +
+      '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
+      "</div>";
+    html += '<div class="eyebrow">Movimientos — Corte ' + st.corte + "</div>";
+    var movimientos = st.log.map(function (op, idx) { return { op: op, idx: idx }; }).reverse();
+    var showAllMov = !!nav.cajaMovimientosExpanded;
+    var visibleMov = showAllMov ? movimientos : movimientos.slice(0, CAJA_MOVIMIENTOS_PAGE);
+    html += '<div class="op-list">';
+    if (!movimientos.length) {
+      html += '<div class="op-empty">Todavía no hay movimientos en este corte.</div>';
+    } else {
+      visibleMov.forEach(function (item) { html += opRowHtml(item.op, item.idx, false); });
+    }
+    html += "</div>";
+    if (movimientos.length > CAJA_MOVIMIENTOS_PAGE) {
+      html += '<div style="text-align:center;padding:6px 0 2px;">' +
+        '<button class="link-btn" id="btnToggleMovimientos" style="margin:0 auto;">' +
+        (showAllMov ? "Mostrar menos ‹" : "Mostrar más (" + (movimientos.length - CAJA_MOVIMIENTOS_PAGE) + ") ›") +
+        "</button></div>";
+    }
+
+    html += '<div class="eyebrow">Corte de caja</div>';
+    html += '<div class="close-corte-wrap">';
+    html += '<div class="cash-panel" style="margin:0 0 10px;">' +
+      '<div class="cash-row"><span class="k">Efectivo esperado (este corte)</span><span class="v">' + money(esperadoCierre) + "</span></div>" +
+      '<div class="cash-input-row"><span class="k">Efectivo que retirás del puesto</span><input type="number" min="0" step="500" id="corteRetiroInput" placeholder="0"></div>' +
+      '<div style="font-size:12px;color:var(--text-muted);padding:6px 2px 0;line-height:1.4;">Lo que no retirés queda como caja inicial del próximo corte.</div>' +
+      "</div>";
+    html += '<button class="btn-block" id="btnCerrarCorte">Cerrar corte y empezar Corte ' + (st.corte + 1) + "</button></div>";
+
+    var expected = st.cajaInicial + st.cumulative.efectivo;
+    var counted = st.counted;
+    html += '<div class="eyebrow">Resumen del puesto</div>';
+    html += '<div class="cash-panel">' +
+      '<div class="cash-row"><span class="k">Caja inicial del puesto</span><span class="v">' + money(st.cajaInicial) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Ventas en efectivo</span><span class="v">' + money(st.cumulative.efectivo) + "</span></div>" +
+      '<div class="cash-row"><span class="k"><strong>Efectivo esperado</strong></span><span class="v">' + money(expected) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Transferencias</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Tarjetas</span><span class="v">' + money(st.cumulative.tarjeta) + "</span></div>" +
+      '<div class="cash-input-row"><span class="k">Efectivo contado</span><input type="number" id="contadoInput" placeholder="0" value="' + (counted === null ? "" : counted) + '"></div>';
+    if (counted !== null) {
+      var diff = counted - expected;
+      var cls = diff === 0 ? "stock-mucho" : (diff > 0 ? "stock-medio" : "stock-critico");
+      var label = diff === 0 ? "🟢 Caja exacta" : (diff > 0 ? "🟡 Sobrante " + money(diff) : "🔴 Faltante " + money(Math.abs(diff)));
+      html += '<div class="cash-result ' + cls + '">' + label + "</div>";
+    }
+    html += "</div>";
+
+    html += '<div class="close-corte-wrap">' +
+      '<button class="btn-block" id="btnCerrarPuesto" style="background:var(--stock-critico);">Cerrar puesto</button>' +
+      "</div>";
+
+    html += '<div class="eyebrow">Sincronización con Sheets</div>';
+    html += '<div class="cash-panel">' +
+      '<div class="cash-row"><span class="k">Token de este puesto</span><span class="v" style="font-variant-numeric:normal;">' + puestoToken() + "</span></div>" +
+      '<label class="field-label">URL del Web App (Apps Script) — ya viene configurada por defecto; solo tocá si necesitás apuntar a otra planilla' +
+      '<input type="text" id="webAppUrlInput" placeholder="https://script.google.com/macros/s/AKfycb.../exec" value="' + (getWebAppUrl() || "") + '"></label>' +
+      '<div class="cash-row"><span class="k">Pendientes de enviar</span><span class="v" id="pendingCountLbl">' + pendingCount() + "</span></div>" +
+      '<div style="display:flex;gap:8px;margin-top:10px;">' +
+      '<button class="btn-block" id="btnSaveWebAppUrl" style="flex:1;">Guardar URL</button>' +
+      '<button class="btn-block" id="btnRetrySync" style="flex:1;background:var(--surface-sunken);color:var(--text);border:1px solid var(--border);">Reintentar ahora</button>' +
+      "</div></div>";
+  }
+
   body.innerHTML = html;
 
-  body.querySelectorAll(".void-btn").forEach(function (b) {
-    b.addEventListener("click", function () {
-      var idx = parseInt(b.getAttribute("data-void"), 10);
-      voidSale(st.log[idx]);
-      renderHistorial();
-      saveState();
-      showToast("Venta anulada.");
+  var toggleMovBtn = document.getElementById("btnToggleMovimientos");
+  if (toggleMovBtn) {
+    toggleMovBtn.addEventListener("click", function () {
+      nav.cajaMovimientosExpanded = !nav.cajaMovimientosExpanded;
+      renderCajaBody();
     });
-  });
+  }
+
+  var closingRetiroInput = document.getElementById("corteRetiroInput");
+  if (closingRetiroInput && nav.closingPuesto) {
+    closingRetiroInput.addEventListener("input", function () {
+      var badge = document.getElementById("cierreDiffBadge");
+      var raw = closingRetiroInput.value.trim();
+      var v = parseFloat(raw);
+      if (raw === "" || isNaN(v)) { badge.innerHTML = ""; return; }
+      var diff = v - esperadoCierre;
+      var cls = diff === 0 ? "stock-mucho" : (diff > 0 ? "stock-medio" : "stock-critico");
+      var label = diff === 0 ? "🟢 Caja exacta" : (diff > 0 ? "🟡 Sobrante " + money(diff) : "🔴 Faltante " + money(Math.abs(diff)));
+      badge.innerHTML = '<div class="cash-result ' + cls + '">' + label + "</div>";
+    });
+  }
+
   document.getElementById("btnCerrarCorte").addEventListener("click", function () {
-    var contadoInput = document.getElementById("corteContadoInput");
-    var contado = parseFloat(contadoInput.value);
-    if (isNaN(contado) || contado < 0) { showToast("Ingresá el efectivo contado antes de cerrar el corte."); return; }
+    var esperado = st.corteCajaInicial + st.totals.efectivo;
     var retiroInput = document.getElementById("corteRetiroInput");
-    var retiro = parseFloat(retiroInput.value);
-    if (isNaN(retiro) || retiro < 0) retiro = 0;
+    var retiro;
+    if (nav.closingPuesto) {
+      var retiroRaw = retiroInput.value.trim();
+      retiro = parseFloat(retiroRaw);
+      if (retiroRaw === "" || isNaN(retiro) || retiro < 0) {
+        showToast("Ingresá el efectivo que retirás antes de cerrar el puesto.");
+        return;
+      }
+    } else {
+      retiro = parseFloat(retiroInput.value);
+      if (isNaN(retiro) || retiro < 0) retiro = 0;
+    }
+    var contado = nav.closingPuesto ? retiro : esperado;
     if (retiro > contado) { showToast("El retiro no puede ser mayor al efectivo contado."); return; }
     var queda = contado - retiro;
     var cierreTime = new Date().toISOString();
-    var esperado = st.corteCajaInicial + st.totals.efectivo;
     var diferencia = esperado - contado;
+    st.cumulative.retirado = (st.cumulative.retirado || 0) + retiro;
     var payload = buildCortePayload(st, contado, esperado, diferencia, cierreTime, retiro, queda);
+
+    if (nav.closingPuesto) {
+      var confirmMsg = "¿Estás seguro que querés cerrar el puesto \"" + session.identificador +
+        "\"?\n\nEs una decisión importante: no se puede deshacer, y para seguir vendiendo vas a tener que volver a identificarte.";
+      if (!confirm(confirmMsg)) return;
+      payload.cierrePuesto = buildCierrePuestoPayload(st, contado, retiro, cierreTime);
+      enqueuePayload(payload);
+      flushQueue();
+      clearState(session.tipo, session.identificador);
+      showToast("Puesto cerrado" + (retiro > 0 ? " · retiraste " + money(retiro) : "") + ".");
+      switchPuesto();
+      return;
+    }
+
     enqueuePayload(payload);
     flushQueue();
-
     st.corte += 1;
     st.corteCajaInicial = queda;
     st.corteApertura = cierreTime;
@@ -1180,82 +1348,107 @@ function renderHistorial() {
     showToast("Corte cerrado" + (retiro > 0 ? " · retiraste " + money(retiro) : "") + ". Empezó el Corte " + st.corte + ".");
     render();
   });
+
+  var cerrarPuestoBtn = document.getElementById("btnCerrarPuesto");
+  if (cerrarPuestoBtn) {
+    cerrarPuestoBtn.addEventListener("click", function () {
+      if (!st.setupDone) { switchPuesto(); return; }
+      nav.closingPuesto = true;
+      render();
+      showToast("Contá el efectivo arriba y confirmá para cerrar el puesto.");
+    });
+  }
+
+  var saveUrlBtn = document.getElementById("btnSaveWebAppUrl");
+  if (saveUrlBtn) {
+    saveUrlBtn.addEventListener("click", function () {
+      var v = document.getElementById("webAppUrlInput").value.trim();
+      setWebAppUrl(v);
+      showToast(v ? "URL guardada." : "URL borrada.");
+      var pendingBefore = pendingCount();
+      flushQueue().then(function () {
+        if (pendingBefore > 0) {
+          showToast(pendingCount() === 0 ? "Sincronización al día." : "Todavía no se pudo sincronizar. Revisá la URL o la conexión.");
+        }
+      });
+    });
+  }
+  var retryBtn = document.getElementById("btnRetrySync");
+  if (retryBtn) {
+    retryBtn.addEventListener("click", function () {
+      if (!pendingCount()) { showToast("No hay cortes pendientes."); return; }
+      showToast("Reintentando sincronización...");
+      flushQueue().then(function () {
+        showToast(pendingCount() === 0 ? "Sincronización al día." : "Todavía no se pudo sincronizar. Revisá la URL o la conexión.");
+      });
+    });
+  }
+  var contadoInput = document.getElementById("contadoInput");
+  if (contadoInput) {
+    contadoInput.addEventListener("change", function () {
+      var v = parseFloat(contadoInput.value);
+      st.counted = isNaN(v) ? null : v;
+      saveState();
+      renderCajaBody();
+    });
+  }
 }
 
 "use strict";
 
-function renderSeteo() {
+function renderSeteoStock() {
   var s = STANDS[nav.stand];
   var st = state[nav.stand];
-  var html = header("Seteo de stock y caja", s.label);
+  nav.stockExpanded = nav.stockExpanded || {};
+  var html = header("Stock", s.label);
   html += '<div class="eyebrow">Productos</div>';
   st.products.forEach(function (p) {
+    var expanded = !!nav.stockExpanded[p.id];
     html += '<div class="set-row" data-id="' + p.id + '">';
-    html += '<div class="head"><span class="icon">' + p.icon + '</span><span class="name">' + p.name + '</span>' +
-      '<span class="price-field">$<input type="number" min="0" step="100" value="' + p.price + '" data-price="' + p.id + '"></span></div>';
-    html += '<div class="mini-toggle"><span class="lbl">Controlar stock de este producto</span>' +
-      '<button class="switch" data-prod-switch="' + p.id + '" data-on="' + p.controlled + '"></button></div>';
-    if (p.controlled) {
-      html += '<div class="stock-controls">' + stockLine(p) +
-        '<button class="qty-btn" data-repo="' + p.id + '" data-delta="-1">–</button>' +
-        '<button class="qty-btn" data-repo="' + p.id + '" data-delta="1">+</button>' +
-        '<button class="qty-btn" data-repo="' + p.id + '" data-delta="10">+10</button>' +
-        "</div>";
-    } else {
-      html += '<div class="no-control-note">Se puede vender sin límite: no bloquea ni descuenta stock.</div>';
+    html += '<div class="head" data-toggle-expand="' + p.id + '">' +
+      '<span class="icon">' + p.icon + '</span>' +
+      '<div class="name-stock"><span class="name">' + p.name + '</span>' + stockLine(p) + "</div>" +
+      '<span class="price-display">' + money(p.price) + '</span>' +
+      '<span class="expand-chev">' + (expanded ? "▲" : "▾") + '</span>' +
+      "</div>";
+    if (expanded) {
+      html += '<div class="stock-edit">';
+      html += '<div class="mini-toggle"><span class="lbl">Precio</span>' +
+        '<span class="price-field">$<input type="number" min="0" step="100" value="' + p.price + '" data-price="' + p.id + '"></span></div>';
+      html += '<div class="mini-toggle" style="margin-top:10px;"><span class="lbl">Controlar stock de este producto</span>' +
+        '<button class="switch" data-prod-switch="' + p.id + '" data-on="' + p.controlled + '"></button></div>';
+      if (p.controlled) {
+        html += '<div class="stock-controls" style="margin-top:10px;justify-content:flex-start;">' +
+          '<span class="qty-group">' +
+          '<button class="qty-btn" data-repo="' + p.id + '" data-delta="-1">–</button>' +
+          '<input type="number" min="0" step="1" class="qty-num-input" value="' + p.stock + '" data-stock-input="' + p.id + '">' +
+          '<button class="qty-btn" data-repo="' + p.id + '" data-delta="1">+</button>' +
+          '<button class="qty-btn" data-repo="' + p.id + '" data-delta="10">+10</button>' +
+          "</span></div>";
+      }
+      html += "</div>";
     }
     html += "</div>";
   });
 
-  var expected = st.cajaInicial + st.cumulative.efectivo;
-  var counted = st.counted;
-  html += '<div class="eyebrow">Caja</div>';
-  html += '<div class="cash-panel">' +
-    '<div class="cash-row"><span class="k">Caja inicial del puesto</span><span class="v">' + money(st.cajaInicial) + "</span></div>" +
-    '<div class="cash-row"><span class="k">Ventas en efectivo</span><span class="v">' + money(st.cumulative.efectivo) + "</span></div>" +
-    '<div class="cash-row"><span class="k"><strong>Efectivo esperado</strong></span><span class="v">' + money(expected) + "</span></div>" +
-    '<div class="cash-row"><span class="k">Transferencias</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
-    '<div class="cash-row"><span class="k">Tarjetas</span><span class="v">' + money(st.cumulative.tarjeta) + "</span></div>" +
-    '<div class="cash-input-row"><span class="k">Efectivo contado</span><input type="number" id="contadoInput" placeholder="0" value="' + (counted === null ? "" : counted) + '"></div>';
-  if (counted !== null) {
-    var diff = counted - expected;
-    var cls = diff === 0 ? "stock-mucho" : (diff > 0 ? "stock-medio" : "stock-critico");
-    var label = diff === 0 ? "🟢 Caja exacta" : (diff > 0 ? "🟡 Sobrante " + money(diff) : "🔴 Faltante " + money(Math.abs(diff)));
-    html += '<div class="cash-result ' + cls + '">' + label + "</div>";
+  html += '<div class="eyebrow">Movimientos de stock — Corte ' + st.corte + "</div>";
+  html += '<div class="op-list">';
+  var stockLog = st.log.filter(function (op) { return op.type === "reposicion"; });
+  if (!stockLog.length) {
+    html += '<div class="op-empty">Todavía no hay movimientos de stock en este corte.</div>';
+  } else {
+    stockLog.slice().reverse().forEach(function (op) { html += opRowHtml(op, null, false); });
   }
   html += "</div>";
 
-  html += '<div class="eyebrow">Sincronización con Sheets</div>';
-  html += '<div class="cash-panel">' +
-    '<div class="cash-row"><span class="k">Token de este puesto</span><span class="v" style="font-variant-numeric:normal;">' + puestoToken() + "</span></div>" +
-    '<label class="field-label">URL del Web App (Apps Script) — ya viene configurada por defecto; solo tocá si necesitás apuntar a otra planilla' +
-    '<input type="text" id="webAppUrlInput" placeholder="https://script.google.com/macros/s/AKfycb.../exec" value="' + (getWebAppUrl() || "") + '"></label>' +
-    '<div class="cash-row"><span class="k">Pendientes de enviar</span><span class="v" id="pendingCountLbl">' + pendingCount() + "</span></div>" +
-    '<div style="display:flex;gap:8px;margin-top:10px;">' +
-    '<button class="btn-block" id="btnSaveWebAppUrl" style="flex:1;">Guardar URL</button>' +
-    '<button class="btn-block" id="btnRetrySync" style="flex:1;background:var(--surface-sunken);color:var(--text);border:1px solid var(--border);">Reintentar ahora</button>' +
-    "</div></div>";
-
   root.innerHTML = html;
   bindBack(function () { nav.screen = "menu"; render(); });
-  var saveUrlBtn = document.getElementById("btnSaveWebAppUrl");
-  saveUrlBtn.addEventListener("click", function () {
-    var v = document.getElementById("webAppUrlInput").value.trim();
-    setWebAppUrl(v);
-    showToast(v ? "URL guardada." : "URL borrada.");
-    var pendingBefore = pendingCount();
-    flushQueue().then(function () {
-      if (pendingBefore > 0) {
-        showToast(pendingCount() === 0 ? "Sincronización al día." : "Todavía no se pudo sincronizar. Revisá la URL o la conexión.");
-      }
-    });
-  });
-  var retryBtn = document.getElementById("btnRetrySync");
-  retryBtn.addEventListener("click", function () {
-    if (!pendingCount()) { showToast("No hay cortes pendientes."); return; }
-    showToast("Reintentando sincronización...");
-    flushQueue().then(function () {
-      showToast(pendingCount() === 0 ? "Sincronización al día." : "Todavía no se pudo sincronizar. Revisá la URL o la conexión.");
+
+  root.querySelectorAll("[data-toggle-expand]").forEach(function (h) {
+    h.addEventListener("click", function () {
+      var id = h.getAttribute("data-toggle-expand");
+      nav.stockExpanded[id] = !nav.stockExpanded[id];
+      render();
     });
   });
   root.querySelectorAll("[data-prod-switch]").forEach(function (btn) {
@@ -1274,24 +1467,32 @@ function renderSeteo() {
       else { inp.value = p.price; }
     });
   });
+  function applyStockChange(p, newStock) {
+    var delta = newStock - p.stock;
+    if (delta === 0) return;
+    p.stock = newStock;
+    p.level = levelFor(p.stock, p.thresholds);
+    st.log.push({ time: nowLabel(), type: "reposicion", name: p.name, delta: delta, stockResultante: p.stock });
+    render();
+    showToast((delta > 0 ? "+" : "") + delta + " " + p.name + " (" + p.stock + ").");
+  }
+
   root.querySelectorAll("[data-repo]").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var id = btn.getAttribute("data-repo");
       var delta = parseInt(btn.getAttribute("data-delta"), 10);
       var p = st.products.filter(function (x) { return x.id === id; })[0];
       if (delta < 0 && p.stock <= 0) return;
-      p.stock = Math.max(0, p.stock + delta);
-      p.level = levelFor(p.stock, p.thresholds);
-      st.log.push({ time: nowLabel(), type: "reposicion", name: p.name, delta: delta });
-      render();
-      showToast((delta > 0 ? "+" : "") + delta + " " + p.name + ". Nuevo stock: " + p.stock + ".");
+      applyStockChange(p, Math.max(0, p.stock + delta));
     });
   });
-  var contadoInput = document.getElementById("contadoInput");
-  contadoInput.addEventListener("change", function () {
-    var v = parseFloat(contadoInput.value);
-    st.counted = isNaN(v) ? null : v;
-    render();
+  root.querySelectorAll("[data-stock-input]").forEach(function (inp) {
+    inp.addEventListener("change", function () {
+      var p = st.products.filter(function (x) { return x.id === inp.getAttribute("data-stock-input"); })[0];
+      var val = parseInt(inp.value, 10);
+      if (isNaN(val) || val < 0) { inp.value = p.stock; return; }
+      applyStockChange(p, val);
+    });
   });
 }
 
@@ -1305,7 +1506,7 @@ if (session) {
 var nav = {
   screen: session ? (state[session.tipo].setupDone ? "menu" : "setup") : "login",
   stand: session ? session.tipo : null,
-  cart: [], checkout: false, loginTipo: null
+  cart: [], checkout: false, loginTipo: null, closingPuesto: false, cajaMovimientosExpanded: false, stockExpanded: {}
 };
 var root = document.getElementById("app");
 var toastEl = document.getElementById("toast");
@@ -1325,13 +1526,23 @@ function render() {
   if (nav.screen === "setup") return renderSetup();
   if (nav.screen === "vender") return renderVender();
   if (nav.screen === "carrito") return renderCarrito();
-  if (nav.screen === "resumen") return renderResumen();
-  if (nav.screen === "seteo") return renderSeteo();
+  if (nav.screen === "caja") return renderCaja();
+  if (nav.screen === "seteoStock") return renderSeteoStock();
 }
 
 function bindBack(fn) {
   var b = document.getElementById("backBtn");
   if (b) b.addEventListener("click", fn);
+}
+
+function switchPuesto() {
+  localStorage.removeItem(SESSION_KEY);
+  session = null;
+  nav.stand = null;
+  nav.screen = "login";
+  nav.loginTipo = null;
+  nav.closingPuesto = false;
+  render();
 }
 
 "use strict";

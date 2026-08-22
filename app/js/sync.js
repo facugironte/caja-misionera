@@ -128,3 +128,15 @@ function buildCortePayload(st, contado, esperado, diferencia, cierreTime, retiro
 
   return { token: puestoToken(), corte_id: corteId, movimientos: movimientos, ventas: ventas, cierre: cierre };
 }
+
+function buildCierrePuestoPayload(st, contado, retiro, cierreTime) {
+  var total = st.cumulative.efectivo + st.cumulative.transferencia + st.cumulative.tarjeta + st.cumulative.otro;
+  return {
+    puesto_tipo: session.tipo, puesto_id: session.identificador, voluntario: session.voluntario,
+    sesion_inicio: session.inicio, sesion_fin: cierreTime,
+    cant_cortes: st.corte, cant_ventas: st.cumulative.ventas,
+    monto_efectivo: st.cumulative.efectivo, monto_transferencia: st.cumulative.transferencia,
+    monto_tarjeta: st.cumulative.tarjeta, monto_otro: st.cumulative.otro, monto_total: total,
+    caja_inicial_puesto: st.cajaInicial, efectivo_contado_final: contado, efectivo_retirado_final: retiro
+  };
+}

@@ -9,7 +9,7 @@ function renderSetup() {
   var controlled = st.products.filter(function (p) { return p.controlled; });
   html += '<div class="eyebrow">Stock inicial</div>';
   if (!controlled.length) {
-    html += '<p class="note">Ningún producto de este puesto controla stock todavía. Podés activarlo más tarde desde Seteo de stock y caja.</p>';
+    html += '<p class="note">Ningún producto de este puesto controla stock todavía. Podés activarlo más tarde desde Stock.</p>';
   } else {
     controlled.forEach(function (p) {
       html += '<div class="set-row" data-id="' + p.id + '">' +

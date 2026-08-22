@@ -280,14 +280,28 @@
     background: #fff; transition: transform .15s ease;
   }
   .switch[data-on="true"]::after { transform: translateX(18px); }
+  .switch-sm { width: 34px; height: 20px; flex: none; }
+  .switch-sm::after { width: 16px; height: 16px; top: 2px; left: 2px; }
+  .switch-sm[data-on="true"]::after { transform: translateX(14px); }
 
   .set-row {
     background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    padding: 12px 14px; margin: 0 18px 10px; display: flex; flex-direction: column; gap: 8px;
+    padding: 10px 12px; margin: 0 18px 8px; display: flex; flex-direction: column; gap: 6px;
   }
-  .set-row .head { display: flex; align-items: center; gap: 10px; }
-  .set-row .icon { font-size: 20px; flex: none; }
+  .set-row .head { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+  .set-row .icon { font-size: 20px; flex: none; line-height: 1.3; }
   .set-row .name { font-weight: 600; font-size: 14px; flex: 1; }
+  .set-row .name-stock { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; flex: 1; min-width: 0; padding-top: 2px; }
+  .set-row .price-display, .set-row .expand-chev { margin-top: 2px; }
+  .set-row .name-stock .name { flex: none; }
+  .set-row .price-display {
+    font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--stand-accent);
+    font-variant-numeric: tabular-nums; flex: none;
+  }
+  .set-row .expand-chev { color: var(--text-faint); font-size: 12px; flex: none; width: 14px; text-align: center; }
+  .set-row .stock-edit { padding-top: 8px; margin-top: 2px; border-top: 1px solid var(--border); }
+  .set-row .stock-edit .mini-toggle { justify-content: flex-start; }
+  .set-row .stock-edit .mini-toggle .lbl { flex: none; width: 150px; }
   .set-row .price-field {
     display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-muted); flex: none;
   }
@@ -296,7 +310,13 @@
     font-size: 16px; background: var(--surface-sunken); color: var(--text); text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  .set-row .stock-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .set-row .stock-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .qty-group { display: flex; align-items: center; gap: 8px; }
+  .qty-num-input {
+    width: 56px; height: 40px; border: 1px solid var(--border); border-radius: 10px; padding: 0 4px;
+    font-size: 15px; background: var(--surface-sunken); color: var(--text); text-align: center;
+    font-variant-numeric: tabular-nums; flex: none;
+  }
   .cash-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin: 8px 18px 20px; }
   .cash-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 13.5px; }
   .cash-row .k { color: var(--text-muted); }

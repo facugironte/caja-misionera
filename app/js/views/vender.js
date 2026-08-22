@@ -16,7 +16,7 @@ function renderVender() {
   document.getElementById("goCarrito").addEventListener("click", function () {
     nav.cart = []; nav.checkout = false; nav.screen = "carrito"; render();
   });
-  document.getElementById("goHistorialLink").addEventListener("click", function () { nav.screen = "resumen"; render(); });
+  document.getElementById("goHistorialLink").addEventListener("click", function () { nav.screen = "caja"; render(); });
   renderRecentSales();
 }
 
@@ -24,13 +24,25 @@ function renderRecentSales() {
   var st = state[nav.stand];
   var wrap = document.getElementById("recentSales");
   if (!wrap) return;
-  var recent = st.log.slice(-6).reverse();
+  var recent = st.log
+    .map(function (op, idx) { return { op: op, idx: idx }; })
+    .filter(function (item) { return item.op.type === "venta" || item.op.type === "anulacion"; })
+    .reverse();
   if (!recent.length) {
     wrap.innerHTML = '<div class="op-empty">Todavía no hay ventas en este corte.</div>';
     return;
   }
   var html = '<div class="op-list">';
-  recent.forEach(function (op) { html += opRowHtml(op, null, false); });
+  recent.forEach(function (item) { html += opRowHtml(item.op, item.idx, true); });
   html += "</div>";
   wrap.innerHTML = html;
+  wrap.querySelectorAll(".void-btn").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var idx = parseInt(b.getAttribute("data-void"), 10);
+      voidSale(st.log[idx]);
+      renderRecentSales();
+      saveState();
+      showToast("Venta anulada.");
+    });
+  });
 }

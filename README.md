@@ -33,7 +33,7 @@ caja-misionera/
 │   └── js/
 │       ├── format.js, data.js, state.js, session.js, sync.js, ui-helpers.js
 │       ├── nav.js, main.js            # Router y arranque de la app
-│       └── views/                     # Una vista por pantalla (login, menu, setup, vender, carrito, resumen, seteo)
+│       └── views/                     # Una vista por pantalla (login, menu, setup, vender, carrito, caja, seteo-stock)
 ├── standalone/
 │   └── index.html                     # Versión de un solo archivo (generada), para repartir/abrir sin carpetas
 └── scripts/
@@ -50,7 +50,7 @@ Para repartir un único archivo (ej. mandarlo por WhatsApp/mail o dejarlo en un 
 node scripts/build-standalone.js
 ```
 
-En ambos casos, para que la sincronización con Sheets funcione hace falta desplegar el Apps Script una vez (ver [docs/deploy-apps-script.md](docs/deploy-apps-script.md)) y pegar la URL del Web App en Seteo de stock y caja → Sincronización con Sheets.
+En ambos casos, para que la sincronización con Sheets funcione hace falta desplegar el Apps Script una vez (ver [docs/deploy-apps-script.md](docs/deploy-apps-script.md)) y pegar la URL del Web App en Menú → Caja → Sincronización con Sheets.
 
 ## Contexto del proyecto
 

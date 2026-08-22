@@ -1,21 +1,25 @@
 "use strict";
 
-var state = {};
-Object.keys(STANDS).forEach(function (key) {
-  state[key] = {
+function freshStandState(key) {
+  return {
     corte: 1,
     setupDone: false,
     cajaInicial: 0,
     corteApertura: null,
     corteCajaInicial: 0,
     totals: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 },
-    cumulative: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 },
+    cumulative: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0, retirado: 0 },
     log: [],
     counted: null,
     products: STANDS[key].products.map(function (p) {
       return Object.assign({}, p, { level: levelFor(p.stock, p.thresholds) });
     })
   };
+}
+
+var state = {};
+Object.keys(STANDS).forEach(function (key) {
+  state[key] = freshStandState(key);
 });
 
 function stateKey(tipo, identificador) {
@@ -30,4 +34,7 @@ function loadState(tipo, identificador) {
     var raw = localStorage.getItem(stateKey(tipo, identificador));
     return raw ? JSON.parse(raw) : null;
   } catch (e) { return null; }
+}
+function clearState(tipo, identificador) {
+  try { localStorage.removeItem(stateKey(tipo, identificador)); } catch (e) {}
 }

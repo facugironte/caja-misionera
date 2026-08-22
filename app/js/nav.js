@@ -8,7 +8,7 @@ if (session) {
 var nav = {
   screen: session ? (state[session.tipo].setupDone ? "menu" : "setup") : "login",
   stand: session ? session.tipo : null,
-  cart: [], checkout: false, loginTipo: null
+  cart: [], checkout: false, loginTipo: null, closingPuesto: false, cajaMovimientosExpanded: false, stockExpanded: {}
 };
 var root = document.getElementById("app");
 var toastEl = document.getElementById("toast");
@@ -28,11 +28,21 @@ function render() {
   if (nav.screen === "setup") return renderSetup();
   if (nav.screen === "vender") return renderVender();
   if (nav.screen === "carrito") return renderCarrito();
-  if (nav.screen === "resumen") return renderResumen();
-  if (nav.screen === "seteo") return renderSeteo();
+  if (nav.screen === "caja") return renderCaja();
+  if (nav.screen === "seteoStock") return renderSeteoStock();
 }
 
 function bindBack(fn) {
   var b = document.getElementById("backBtn");
   if (b) b.addEventListener("click", fn);
+}
+
+function switchPuesto() {
+  localStorage.removeItem(SESSION_KEY);
+  session = null;
+  nav.stand = null;
+  nav.screen = "login";
+  nav.loginTipo = null;
+  nav.closingPuesto = false;
+  render();
 }

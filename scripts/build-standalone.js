@@ -15,7 +15,7 @@ var cssPath = path.join(appDir, "css", "styles.css");
 var jsOrder = [
   "format.js", "data.js", "state.js", "session.js", "sync.js", "ui-helpers.js",
   "views/login.js", "views/menu.js", "views/setup.js", "views/vender.js",
-  "views/carrito.js", "views/resumen.js", "views/seteo.js",
+  "views/carrito.js", "views/caja.js", "views/seteo-stock.js",
   "nav.js", "main.js"
 ];
 
