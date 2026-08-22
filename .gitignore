@@ -17,3 +17,6 @@ build/
 # Apps Script: específico de cada despliegue, no se versiona
 appsscript/.clasp.json
 appsscript/.clasprc.json
+
+# Claude Code: configuración/permisos locales, no se versiona
+.claude/settings.local.json
