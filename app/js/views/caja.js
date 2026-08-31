@@ -30,7 +30,7 @@ function renderCajaBody() {
       stat("Efectivo", money(t.efectivo)) +
       stat("Transferencia", money(t.transferencia)) +
       stat("Tarjeta", money(t.tarjeta)) +
-      stat("Otro", money(t.otro)) +
+      stat("Consumo mis.", money(t.otro)) +
       '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
       "</div>";
 
@@ -41,7 +41,7 @@ function renderCajaBody() {
       '<div class="cash-row"><span class="k">Ventas efectivo</span><span class="v">' + money(st.cumulative.efectivo) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas transferencias</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas tarjetas</span><span class="v">' + money(st.cumulative.tarjeta) + "</span></div>" +
-      '<div class="cash-row"><span class="k">Ventas otro</span><span class="v">' + money(st.cumulative.otro) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Ventas consumo misionero</span><span class="v">' + money(st.cumulative.otro) + "</span></div>" +
       '<div class="cash-row"><span class="k"><strong>Ventas totales</strong></span><span class="v">' + money(ventasTotalMonto) + "</span></div>" +
       '<div class="cash-row"><span class="k">Efectivo retirado</span><span class="v">' + money(st.cumulative.retirado || 0) + "</span></div>" +
       "</div>";
@@ -60,7 +60,7 @@ function renderCajaBody() {
       stat("Efectivo", money(t.efectivo)) +
       stat("Transferencia", money(t.transferencia)) +
       stat("Tarjeta", money(t.tarjeta)) +
-      stat("Otro", money(t.otro)) +
+      stat("Consumo mis.", money(t.otro)) +
       '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
       "</div>";
     html += '<div class="eyebrow">Movimientos — Corte ' + st.corte + "</div>";

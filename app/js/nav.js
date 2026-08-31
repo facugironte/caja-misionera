@@ -2,13 +2,13 @@
 
 if (session) {
   var persistedState = loadState(session.tipo, session.identificador);
-  if (persistedState) state[session.tipo] = persistedState;
+  if (validPersistedState(persistedState)) state[session.tipo] = persistedState;
 }
 
 var nav = {
   screen: session ? (state[session.tipo].setupDone ? "menu" : "setup") : "login",
   stand: session ? session.tipo : null,
-  cart: [], checkout: false, loginTipo: null, closingPuesto: false, cajaMovimientosExpanded: false, stockExpanded: {}
+  cart: [], payMethod: null, loginTipo: null, closingPuesto: false, cajaMovimientosExpanded: false, stockExpanded: {}
 };
 var root = document.getElementById("app");
 var toastEl = document.getElementById("toast");
@@ -27,7 +27,6 @@ function render() {
   if (nav.screen === "menu") return renderMenu();
   if (nav.screen === "setup") return renderSetup();
   if (nav.screen === "vender") return renderVender();
-  if (nav.screen === "carrito") return renderCarrito();
   if (nav.screen === "caja") return renderCaja();
   if (nav.screen === "seteoStock") return renderSeteoStock();
 }

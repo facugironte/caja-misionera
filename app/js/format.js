@@ -15,3 +15,8 @@ function slugify(s) {
     .normalize("NFD").replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
     .replace(/[^a-z0-9]+/g, "-").replace(/(^-+|-+$)/g, "");
 }
+
+// Id corto y único para agrupar (ej. las líneas de una misma venta).
+function makeId(prefix) {
+  return (prefix ? prefix + "-" : "") + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6);
+}

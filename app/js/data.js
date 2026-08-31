@@ -8,12 +8,27 @@ function levelFor(stock, t) {
   return "critico";
 }
 var LEVEL_LABEL = { mucho: "MUCHO", medio: "MEDIO", poco: "POCO", critico: "CRÍTICO", agotado: "AGOTADO" };
-var PAY_ICON = { efectivo: "💵", transferencia: "📲", tarjeta: "💳", otro: "🧾" };
+var LEVEL_ORDER = { mucho: 4, medio: 3, poco: 2, critico: 1, agotado: 0 };
+var PAY_ICON = { efectivo: "💵", transferencia: "📲", tarjeta: "💳", otro: "🙏" };
 
+// Stock compartido (ingrediente / recurso) del que descuentan uno o varios productos.
+function pool(id, icon, name, opts) {
+  opts = opts || {};
+  return {
+    id: id, icon: icon, name: name,
+    controlled: true, approxLabel: null,
+    stock: opts.stock || 0,
+    thresholds: opts.thresholds || { mucho: 100, medio: 40, poco: 10 }
+  };
+}
+
+// Producto vendible (botón). `recipe` mapea id de pool -> unidades que descuenta por venta;
+// si tiene recipe, el stock sale de los pools. `controlled` es el modo legacy de stock propio.
 function product(id, icon, name, price, opts) {
   opts = opts || {};
   return {
     id: id, icon: icon, name: name, price: price,
+    recipe: opts.recipe || null,
     controlled: !!opts.controlled,
     stock: opts.stock || 0,
     thresholds: opts.thresholds || { mucho: 100, medio: 40, poco: 10 },
@@ -25,38 +40,43 @@ function product(id, icon, name, price, opts) {
 var STANDS = {
   buffet: {
     label: "Buffet", sub: "Comidas y bebidas", icon: "🍔",
+    pools: [
+      pool("chori", "🌭", "Choripán", { stock: 150, thresholds: { mucho: 100, medio: 50, poco: 20 } }),
+      pool("hamb", "🍔", "Hamburguesa", { stock: 150, thresholds: { mucho: 100, medio: 50, poco: 20 } }),
+      pool("bebida", "🥤", "Bebida", { stock: 200, thresholds: { mucho: 140, medio: 70, poco: 25 } })
+    ],
     products: [
-      product("hamb", "🍔", "Hamburguesa", 5000, { controlled: true, stock: 347, thresholds: { mucho: 200, medio: 100, poco: 21 } }),
-      product("chori", "🌭", "Choripán", 4000, { controlled: true, stock: 82, thresholds: { mucho: 150, medio: 60, poco: 21 } }),
-      product("coca", "🥤", "Coca-Cola", 2000, { controlled: true, stock: 95, thresholds: { mucho: 250, medio: 120, poco: 31 }, approxLabel: function (s) { return "≈ " + s + " vasos"; } }),
-      product("cafe", "☕", "Café", 1500, { controlled: true, stock: 126, thresholds: { mucho: 100, medio: 50, poco: 11 } }),
-      product("papas", "🍟", "Papas fritas", 3000, { controlled: true, stock: 15, thresholds: { mucho: 150, medio: 60, poco: 20 } }),
-      product("agua", "💧", "Agua mineral", 1500, { controlled: true, stock: 0, thresholds: { mucho: 100, medio: 40, poco: 11 } })
+      product("chori_beb", "🌭", "Choripán + bebida", 10000, { recipe: { chori: 1, bebida: 1 } }),
+      product("chori2_beb", "🌭", "2 choripán + bebida", 18000, { recipe: { chori: 2, bebida: 1 } }),
+      product("hamb_beb", "🍔", "Hamburguesa + bebida", 10000, { recipe: { hamb: 1, bebida: 1 } }),
+      product("hamb2_beb", "🍔", "2 hamburguesa + bebida", 18000, { recipe: { hamb: 2, bebida: 1 } }),
+      product("bebida", "🥤", "Bebida", 1000, { recipe: { bebida: 1 } }),
+      product("cafe", "☕", "Café", 1000, { controlled: true, stock: 100, thresholds: { mucho: 60, medio: 30, poco: 10 } }),
+      product("te", "🍵", "Té", 1000, { controlled: true, stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } }),
+      product("torta", "🍰", "Torta", 3000, { controlled: true, stock: 40, thresholds: { mucho: 30, medio: 15, poco: 5 } })
     ]
   },
   tickets: {
-    label: "Tickets", sub: "Fichas y planillas", icon: "🎟️",
+    label: "Tickets", sub: "Fichas para juegos", icon: "🎟️",
     products: [
-      product("ficha1", "🎫", "Ficha x1", 500, { stock: 5000, thresholds: { mucho: 2000, medio: 800, poco: 200 } }),
-      product("ficha10", "🎟️", "Planilla x10", 4500, { stock: 500, thresholds: { mucho: 200, medio: 80, poco: 20 } }),
-      product("ficha20", "🎟️", "Planilla x20", 8500, { stock: 250, thresholds: { mucho: 100, medio: 40, poco: 10 } }),
-      product("fichajuego", "🎯", "Ficha juego", 500, { stock: 3000, thresholds: { mucho: 1500, medio: 600, poco: 150 } })
+      product("juego1", "🎯", "1 juego", 1000),
+      product("tira5", "🎟️", "1 tira (5)", 3000),
+      product("tira10", "🎫", "2 tiras (10)", 5000)
     ]
   },
   entradas: {
     label: "Entradas", sub: "Acceso al evento", icon: "🎪",
     products: [
-      product("entgen", "🎫", "Entrada general", 3000, { stock: 600, thresholds: { mucho: 300, medio: 150, poco: 40 } }),
-      product("entnino", "🧒", "Entrada niño", 1500, { stock: 300, thresholds: { mucho: 150, medio: 70, poco: 20 } }),
-      product("entfam", "👨‍👩‍👧‍👦", "Entrada familiar", 9000, { controlled: true, stock: 40, thresholds: { mucho: 150, medio: 80, poco: 21 } }),
-      product("bono", "🙏", "Bono contribución", 2000, { stock: 1000, thresholds: { mucho: 400, medio: 150, poco: 40 } })
+      product("entpuerta", "🎫", "Entrada en puerta", 2000)
     ]
   }
 };
 
+// Nota: el id interno "otro" se mantiene (columnas del Sheet, totals/cumulative) —
+// solo cambia la etiqueta visible a "Consumo misionero".
 var PAY_METHODS = [
   { id: "efectivo", label: "Efectivo" },
   { id: "transferencia", label: "Transferencia" },
   { id: "tarjeta", label: "Tarjeta" },
-  { id: "otro", label: "Otro" }
+  { id: "otro", label: "Consumo misionero" }
 ];

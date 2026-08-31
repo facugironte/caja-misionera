@@ -59,7 +59,7 @@ function renderLogin() {
     session = { tipo: tipo, identificador: idVal, voluntario: volVal, inicio: new Date().toISOString() };
     saveSession();
     var persisted = loadState(tipo, idVal);
-    state[tipo] = persisted || freshStandState(tipo);
+    state[tipo] = validPersistedState(persisted) ? persisted : freshStandState(tipo);
     nav.stand = tipo;
     nav.screen = state[tipo].setupDone ? "menu" : "setup";
     nav.loginTipo = null;

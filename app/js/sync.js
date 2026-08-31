@@ -76,67 +76,96 @@ function updateSyncBadge() {
 window.addEventListener("online", flushQueue);
 setInterval(flushQueue, 20000);
 
+// Filas de movimiento de stock para los items de una venta/anulación.
+// Combos (con receta) -> una fila por ingrediente; productos con stock propio -> una fila.
+function stockRowsForSale_(st, corteId, op, sign, tipo, motivo) {
+  var rows = [];
+  var base = {
+    timestamp: op.time, puesto_tipo: session.tipo, puesto_id: session.identificador,
+    voluntario: session.voluntario, corte_id: corteId, tipo: tipo, motivo: motivo,
+    venta_id: (op.id || op.ventaId || ""), stock_resultante: ""
+  };
+  op.items.forEach(function (it) {
+    var p = (st.products || []).filter(function (x) { return x.id === it.productId; })[0];
+    if (!p) return;
+    if (p.recipe) {
+      Object.keys(p.recipe).forEach(function (poolId) {
+        var pool = (st.pools || []).filter(function (x) { return x.id === poolId; })[0];
+        rows.push(Object.assign({}, base, { item: pool ? pool.name : poolId, delta: sign * p.recipe[poolId] * it.qty }));
+      });
+    } else if (p.controlled) {
+      rows.push(Object.assign({}, base, { item: p.name, delta: sign * it.qty }));
+    }
+  });
+  return rows;
+}
+
 function buildCortePayload(st, contado, esperado, diferencia, cierreTime, retiro, queda) {
   var corteId = slugify(session.identificador) + "-corte" + st.corte + "-" + Date.now();
-  var movimientos = [];
+
+  var detalleVentas = [];
+  var movimientosStock = [];
+
   st.log.forEach(function (op) {
     if (op.type === "venta") {
+      var estado = op.voided ? "anulada" : "activa";
       op.items.forEach(function (it) {
-        movimientos.push({
-          timestamp: op.time, puesto_tipo: session.tipo, puesto_id: session.identificador,
-          voluntario: session.voluntario, corte_id: corteId, tipo_movimiento: "venta",
-          producto: it.name, cantidad: it.qty, motivo: "", monto: it.price * it.qty, metodo_pago: op.payMethod
+        detalleVentas.push({
+          timestamp: op.time, venta_id: op.id || "",
+          puesto_tipo: session.tipo, puesto_id: session.identificador, voluntario: session.voluntario,
+          corte_id: corteId, producto: it.name, cantidad: it.qty,
+          precio_unitario: it.price, subtotal: it.price * it.qty,
+          metodo_pago: op.payMethod, estado: estado, total_venta: op.total
         });
       });
+      movimientosStock = movimientosStock.concat(stockRowsForSale_(st, corteId, op, -1, "venta", "Venta"));
     } else if (op.type === "anulacion") {
-      op.items.forEach(function (it) {
-        movimientos.push({
-          timestamp: op.time, puesto_tipo: session.tipo, puesto_id: session.identificador,
-          voluntario: session.voluntario, corte_id: corteId, tipo_movimiento: "anulacion",
-          producto: it.name, cantidad: it.qty, motivo: "Anulación de venta", monto: it.price * it.qty, metodo_pago: ""
-        });
-      });
+      movimientosStock = movimientosStock.concat(stockRowsForSale_(st, corteId, op, 1, "anulacion_venta", "Anulación de venta"));
     } else if (op.type === "reposicion") {
-      movimientos.push({
+      movimientosStock.push({
         timestamp: op.time, puesto_tipo: session.tipo, puesto_id: session.identificador,
         voluntario: session.voluntario, corte_id: corteId,
-        tipo_movimiento: op.delta < 0 ? "ajuste_manual" : "reposicion",
-        producto: op.name, cantidad: op.delta,
-        motivo: op.delta < 0 ? "Ajuste manual de stock" : "Reposición de stock",
-        monto: "", metodo_pago: ""
+        tipo: op.delta < 0 ? "ajuste_resta" : "ajuste_suma",
+        item: op.name, delta: op.delta, stock_resultante: op.stockResultante,
+        venta_id: "", motivo: op.delta < 0 ? "Ajuste manual (resta)" : "Ajuste manual (suma)"
       });
     }
   });
 
-  var ventas = st.log.filter(function (op) { return op.type === "venta"; }).map(function (op) {
-    return {
-      timestamp: op.time, puesto_tipo: session.tipo, puesto_id: session.identificador,
-      voluntario: session.voluntario, corte_id: corteId,
-      cant_items: op.items.length, monto_total: op.total, metodo_pago: op.payMethod,
-      estado: op.voided ? "anulada" : "activa"
-    };
+  var cierre = cierreRow_("corte", st, cierreTime, {
+    corte_id: corteId, apertura: st.corteApertura,
+    cant_cortes: "", cant_ventas: st.totals.ventas, totals: st.totals,
+    caja_inicial: st.corteCajaInicial, efectivo_esperado: esperado,
+    efectivo_contado: contado, diferencia: diferencia,
+    efectivo_retirado: retiro, efectivo_final: queda
   });
 
-  var cierre = {
-    puesto_tipo: session.tipo, puesto_id: session.identificador, voluntario: session.voluntario,
-    corte_id: corteId, apertura: st.corteApertura, cierre: cierreTime,
-    caja_inicial: st.corteCajaInicial, efectivo_esperado: esperado, efectivo_contado: contado,
-    diferencia: diferencia, cant_ventas: st.totals.ventas,
-    monto_total_vendido: st.totals.efectivo + st.totals.transferencia + st.totals.tarjeta + st.totals.otro,
-    efectivo_retirado: retiro, efectivo_final_puesto: queda
-  };
-
-  return { token: puestoToken(), corte_id: corteId, movimientos: movimientos, ventas: ventas, cierre: cierre };
+  return { token: puestoToken(), corte_id: corteId, detalleVentas: detalleVentas, movimientosStock: movimientosStock, cierre: cierre };
 }
 
 function buildCierrePuestoPayload(st, contado, retiro, cierreTime) {
-  var total = st.cumulative.efectivo + st.cumulative.transferencia + st.cumulative.tarjeta + st.cumulative.otro;
+  return cierreRow_("puesto", st, cierreTime, {
+    corte_id: "", apertura: session.inicio,
+    cant_cortes: st.corte, cant_ventas: st.cumulative.ventas, totals: st.cumulative,
+    caja_inicial: st.cajaInicial, efectivo_esperado: "",
+    efectivo_contado: contado, diferencia: "",
+    efectivo_retirado: retiro, efectivo_final: 0
+  });
+}
+
+// Fila común de la pestaña "Cierres" (sirve para el cierre de un corte y para el cierre final del puesto).
+function cierreRow_(tipoCierre, st, cierreTime, o) {
+  var t = o.totals;
   return {
+    timestamp: cierreTime, tipo_cierre: tipoCierre,
     puesto_tipo: session.tipo, puesto_id: session.identificador, voluntario: session.voluntario,
-    sesion_inicio: session.inicio, sesion_fin: cierreTime,
-    cant_cortes: st.corte, cant_ventas: st.cumulative.ventas,
-    monto_efectivo: st.cumulative.efectivo, monto_transferencia: st.cumulative.transferencia,
-    monto_tarjeta: st.cumulative.tarjeta, monto_otro: st.cumulative.otro, monto_total: total,
-    caja_inicial_puesto: st.cajaInicial, efectivo_contado_final: contado, efectivo_retirado_final: retiro
+    corte_id: o.corte_id, apertura: o.apertura, cierre: cierreTime,
+    cant_cortes: o.cant_cortes, cant_ventas: o.cant_ventas,
+    monto_efectivo: t.efectivo, monto_transferencia: t.transferencia,
+    monto_tarjeta: t.tarjeta, monto_otro: t.otro,
+    monto_total_vendido: t.efectivo + t.transferencia + t.tarjeta + t.otro,
+    caja_inicial: o.caja_inicial, efectivo_esperado: o.efectivo_esperado,
+    efectivo_contado: o.efectivo_contado, diferencia: o.diferencia,
+    efectivo_retirado: o.efectivo_retirado, efectivo_final: o.efectivo_final
   };
 }

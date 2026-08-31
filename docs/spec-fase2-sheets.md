@@ -22,59 +22,69 @@ Cada vez que se cierra un corte (acción "Cerrar corte", ya existente en el prot
 
 Al cerrar, además del efectivo contado, se pide cuánto retira quien cierra el corte (por ejemplo, para llevarlo a tesorería). Lo que no se retira queda como caja inicial del corte siguiente — así la caja del puesto no crece sin límite a lo largo del día.
 
-## 3. Qué se guarda: tres niveles de granularidad
+## 3. Qué se guarda: tres pestañas
+
+> **Reorganización 2026-08-31.** Antes eran cuatro pestañas (`Movimientos`, `Resumen por venta`, `Resumen por cierre`, `Cierre de puesto`). Se reemplazaron por tres: **DetalleVentas**, **Cierres** y **MovimientosStock**. Las viejas quedan sin uso; hay que correr `setupSheets` de nuevo y re-desplegar el Web App (ver [deploy-apps-script.md](deploy-apps-script.md)).
 
 Dentro de la misma planilla, en tres pestañas separadas:
 
-### Pestaña "Movimientos" (detalle línea por línea)
-Todo movimiento individual: venta, anulación de venta, ajuste manual de stock, reposición/inyección de stock.
+### Pestaña "DetalleVentas" (una fila por producto vendido)
+Una fila por cada producto dentro de cada venta. Las líneas de una misma venta comparten `venta_id`.
 
 | Columna | Descripción |
 |---|---|
-| timestamp | Fecha y hora del movimiento |
-| puesto_tipo | Buffet / Tickets / Entradas |
+| timestamp | Hora de la venta |
+| venta_id | Id de la venta (agrupa sus líneas) |
+| puesto_tipo | buffet / tickets / entradas |
 | puesto_id | Identificador del puesto (ej. "Buffet 1") |
 | voluntario | Nombre de quien operaba |
 | corte_id | Corte al que pertenece |
-| tipo_movimiento | venta / anulacion / ajuste_manual / reposicion |
-| producto | Nombre del producto (si aplica) |
-| cantidad | Cantidad involucrada |
-| motivo | Motivo del ajuste/anulación (si aplica) |
-| monto | Monto en pesos (si aplica) |
-| metodo_pago | Efectivo / otro (si aplica) |
+| producto | Nombre del producto o combo |
+| cantidad | Unidades de ese producto en la venta |
+| precio_unitario | Precio unitario |
+| subtotal | cantidad × precio_unitario |
+| metodo_pago | efectivo / transferencia / tarjeta / otro (etiqueta visible de `otro`: "Consumo misionero") |
+| estado | activa / anulada (las líneas de una venta anulada quedan con `anulada`) |
+| total_venta | Total de toda la venta (repetido en cada línea) |
 
-### Pestaña "Resumen por venta"
-Una fila por cada venta cerrada (no por cada producto dentro de ella).
-
-| Columna | Descripción |
-|---|---|
-| timestamp | Momento de cierre de la venta |
-| puesto_tipo / puesto_id / voluntario / corte_id | Igual que arriba |
-| cant_items | Cantidad de productos distintos en la venta |
-| monto_total | Total de la venta |
-| metodo_pago | Método usado |
-| estado | activa / anulada |
-
-### Pestaña "Resumen por cierre"
-Una fila por cada corte cerrado.
+### Pestaña "Cierres" (una fila por cierre de corte y una por cierre de puesto)
+`tipo_cierre` distingue el cierre de un corte (`corte`) del cierre final del puesto (`puesto`). El cierre final de un puesto genera **dos** filas: la del último corte (`corte`) y la del rollup de toda la sesión (`puesto`).
 
 | Columna | Descripción |
 |---|---|
+| timestamp | Hora del cierre |
+| tipo_cierre | corte / puesto |
 | puesto_tipo / puesto_id / voluntario | — |
-| corte_id | — |
-| apertura / cierre | Fecha/hora de inicio y fin del corte |
-| caja_inicial | Monto inicial declarado |
-| efectivo_esperado | Caja inicial + ventas en efectivo |
-| efectivo_contado | Lo que se contó físicamente |
-| diferencia | esperado - contado |
-| cant_ventas | Cantidad de ventas del corte |
-| monto_total_vendido | Suma de todas las ventas del corte |
-| efectivo_retirado | Cuánto efectivo se lleva quien cierra el corte (puede ser 0) |
-| efectivo_final_puesto | efectivo_contado - efectivo_retirado; queda como caja_inicial del corte siguiente |
+| corte_id | Id del corte (vacío en las filas `puesto`) |
+| apertura / cierre | corte: inicio/fin del corte · puesto: inicio de sesión / hora del cierre final |
+| cant_cortes | Cantidad de cortes de la sesión (solo filas `puesto`) |
+| cant_ventas | Ventas del corte / acumuladas del puesto |
+| monto_efectivo / monto_transferencia / monto_tarjeta / monto_otro | Ventas $ por método de pago |
+| monto_total_vendido | Suma de los cuatro |
+| caja_inicial | Caja inicial del corte / del puesto |
+| efectivo_esperado | caja_inicial + monto_efectivo (vacío en filas `puesto`) |
+| efectivo_contado | Efectivo contado físicamente |
+| diferencia | esperado − contado (vacío en filas `puesto`) |
+| efectivo_retirado | Cuánto efectivo se lleva quien cierra (puede ser 0) |
+| efectivo_final | Lo que queda después del cierre (0 en el cierre final del puesto; es el `caja_inicial` del corte siguiente) |
+
+### Pestaña "MovimientosStock" (una fila por cambio de stock)
+Cada delta de stock de cualquier puesto: por venta, por anulación de venta, y por ajuste manual (suma/resta). En Buffet, cada combo descuenta de sus **ingredientes** (Choripán / Hamburguesa / Bebida), así que una venta de "2 choripán + bebida" genera dos filas (−2 Choripán, −1 Bebida); Café / Té / Torta tienen stock propio (una fila por venta). Productos sin control de stock (Entradas y Tickets por defecto) no generan filas.
+
+| Columna | Descripción |
+|---|---|
+| timestamp | Hora del movimiento |
+| puesto_tipo / puesto_id / voluntario / corte_id | — |
+| tipo | venta / anulacion_venta / ajuste_suma / ajuste_resta |
+| item | Ingrediente o producto afectado (ej. "Bebida", "Choripán", "Entrada en puerta") |
+| delta | Cambio de stock (negativo consume, positivo repone) |
+| stock_resultante | Stock después del movimiento (solo en ajustes manuales; vacío en venta/anulación) |
+| venta_id | Id de la venta que originó el movimiento (venta / anulacion_venta) |
+| motivo | Texto libre ("Venta", "Anulación de venta", "Ajuste manual (suma/resta)") |
 
 ## 4. Cómo se conecta el front con Sheets
 
-- Un **Google Apps Script** publicado como Web App (función `doPost`) recibe un JSON con el paquete del corte (movimientos + resumen de venta + resumen de cierre) y escribe las filas correspondientes en las tres pestañas.
+- Un **Google Apps Script** publicado como Web App (función `doPost`) recibe un JSON con el paquete del corte (`detalleVentas` + `movimientosStock` + `cierre`, más `cierrePuesto` si es el cierre final) y escribe las filas correspondientes en las tres pestañas.
 - El script valida un **token simple por puesto** para evitar que cualquiera con la URL pueda escribir datos.
 - El front hace un `fetch` POST a la URL del Web App al cerrar el corte.
 
@@ -92,7 +102,7 @@ Aprovechando la corrección, se decidió además:
 
 - **"Cambiar de puesto" ya no es instantáneo si el puesto arrancó a operar** (`setupDone`): fuerza pasar por la pantalla de Resumen en un modo especial ("cerrar puesto") antes de soltar la sesión. Si el puesto todavía no terminó el seteo inicial, cambiar sigue siendo instantáneo (no hay nada que cerrar).
 - **Se sacó el campo de efectivo contado de los cierres de corte intermedios** (los que arrancan el siguiente corte del mismo puesto): esos cortes cierran directo usando el efectivo esperado, sin pedir contar. Sigue siendo **obligatorio en el cierre final de puesto** (el que dispara "Cambiar de puesto" o el botón "Cerrar puesto" de Seteo), porque ahí sí importa tener un número real para la entrega de caja. El contador de la pantalla Seteo (que solo muestra sobrante/faltante informativo, sin bloquear nada) no se tocó — es la única herramienta de conteo disponible durante los cortes intermedios.
-- Al cerrar un puesto, además del payload de corte normal (igual que siempre, a Movimientos/Resumen por venta/Resumen por cierre), se arma un segundo objeto `cierrePuesto` con los **totales acumulados de toda la sesión** del puesto (todos los cortes, no solo el último) — cantidad de cortes, ventas y montos por método de pago, caja inicial del puesto, efectivo contado/retirado en el cierre final — y se manda en el mismo POST. El backend lo escribe en una pestaña nueva, **"Cierre de puesto"**, una fila por cada vez que un puesto se cierra para cambiar. Sirve para tener de un vistazo el resumen de todo lo que trabajó cada puesto/voluntario, sin tener que sumar los cortes individuales a mano.
+- Al cerrar un puesto, además del payload de corte normal, se arma un segundo objeto `cierrePuesto` con los **totales acumulados de toda la sesión** del puesto (todos los cortes, no solo el último) — cantidad de cortes, ventas y montos por método de pago, caja inicial del puesto, efectivo contado/retirado en el cierre final — y se manda en el mismo POST. El backend lo escribe en la pestaña **"Cierres"** con `tipo_cierre = puesto`, junto a la fila `tipo_cierre = corte` del último corte. Sirve para tener de un vistazo el resumen de todo lo que trabajó cada puesto/voluntario, sin sumar los cortes a mano. *(Antes de la reorganización del 2026-08-31 esto vivía en una pestaña aparte, "Cierre de puesto".)*
 - Al cerrar el puesto también se borra su estado persistido en `localStorage` (`clearState`) — si alguien vuelve a entrar más tarde con el mismo identificador, arranca el seteo de cero, no retoma el corte anterior.
 
 ## 5. Nota sobre dónde conviene construir esto

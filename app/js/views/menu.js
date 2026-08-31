@@ -26,6 +26,7 @@ function renderMenu() {
     showToast("Para cambiar de puesto, primero cerrá la caja de este puesto.");
   });
   document.getElementById("goVender").addEventListener("click", function () {
+    nav.cart = []; nav.payMethod = null;
     nav.screen = st.setupDone ? "vender" : "setup";
     render();
   });

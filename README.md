@@ -33,7 +33,7 @@ caja-misionera/
 │   └── js/
 │       ├── format.js, data.js, state.js, session.js, sync.js, ui-helpers.js
 │       ├── nav.js, main.js            # Router y arranque de la app
-│       └── views/                     # Una vista por pantalla (login, menu, setup, vender, carrito, caja, seteo-stock)
+│       └── views/                     # Una vista por pantalla (login, menu, setup, vender, caja, seteo-stock)
 ├── standalone/
 │   └── index.html                     # Versión de un solo archivo (generada), para repartir/abrir sin carpetas
 └── scripts/

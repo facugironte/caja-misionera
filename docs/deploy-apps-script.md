@@ -51,9 +51,9 @@ Esto abre el editor de Apps Script en el navegador. Ahí:
 1. Elegí la función `setupSheets` en el desplegable de funciones (arriba).
 2. Tocá **Ejecutar**.
 3. La primera vez va a pedir autorizar permisos (acceso a Google Sheets) — aceptá.
-4. Verificá en la planilla (`clasp open --webapp` no aplica acá; abrila desde Drive) que aparecieron las pestañas **Movimientos**, **Resumen por venta**, **Resumen por cierre** y **Cierre de puesto** con sus encabezados.
+4. Verificá en la planilla (`clasp open --webapp` no aplica acá; abrila desde Drive) que aparecieron las pestañas **DetalleVentas**, **Cierres** y **MovimientosStock** con sus encabezados.
 
-`setupSheets` es seguro de volver a ejecutar (no borra filas existentes, solo crea lo que falte) — si ya tenías la planilla desplegada de antes y le sumaste la pestaña "Cierre de puesto" al código, volvé a correr esta función para que se cree.
+`setupSheets` es seguro de volver a ejecutar (no borra filas existentes, solo crea lo que falte). **Reorganización 2026-08-31:** la estructura pasó de cuatro pestañas (`Movimientos`, `Resumen por venta`, `Resumen por cierre`, `Cierre de puesto`) a estas tres. Si ya tenías la planilla vieja desplegada, volvé a correr `setupSheets` para crear las nuevas — las viejas quedan como están (podés borrarlas a mano si querés) — y re-desplegá el Web App (paso 7 / "Actualizar el script más adelante") para que tome el `Code.gs` nuevo.
 
 ## 7. Desplegar como Web App
 

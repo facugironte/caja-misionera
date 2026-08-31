@@ -1,7 +1,13 @@
 "use strict";
 
+// Subir cuando cambia la forma del estado persistido de forma incompatible
+// (ej. catálogo de productos / pools de stock). Estados guardados con otro
+// número se descartan y se arranca de cero.
+var STATE_SCHEMA = 3;
+
 function freshStandState(key) {
   return {
+    schema: STATE_SCHEMA,
     corte: 1,
     setupDone: false,
     cajaInicial: 0,
@@ -11,11 +17,16 @@ function freshStandState(key) {
     cumulative: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0, retirado: 0 },
     log: [],
     counted: null,
+    pools: (STANDS[key].pools || []).map(function (p) {
+      return Object.assign({}, p, { level: levelFor(p.stock, p.thresholds) });
+    }),
     products: STANDS[key].products.map(function (p) {
       return Object.assign({}, p, { level: levelFor(p.stock, p.thresholds) });
     })
   };
 }
+
+function validPersistedState(o) { return !!o && o.schema === STATE_SCHEMA; }
 
 var state = {};
 Object.keys(STANDS).forEach(function (key) {

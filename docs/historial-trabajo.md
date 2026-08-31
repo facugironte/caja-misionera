@@ -116,6 +116,46 @@ Registro cronológico de las tareas y decisiones tomadas en el proyecto, a modo 
 - Se agregaron los KPI del corte (Ventas/Efectivo/Transferencia/Tarjeta/Otro/Total del corte) arriba de todo en el cierre de puesto — los mismos que ya se ven en la Caja en modo normal.
 - Se reordenó esa pantalla: ahora es KPIs del corte → Resumen del puesto (cantidad de ventas, desglose, efectivo retirado) → panel de cierre (efectivo esperado + retiro + botón). Antes el panel de cierre iba primero.
 
+## Pantalla de venta en un solo paso + confirmación al vender y al anular (2026-08-31)
+
+- **Se unificó el flujo de venta en una sola pantalla.** Antes: pantalla Vender (con una tarjeta "Nueva venta") → pantalla Carrito (grilla + carrito) → paso de checkout (total + elegir método de pago, que cobraba al instante). Ahora la pantalla **Vender** muestra de una: grilla de productos, carrito con los `−/＋`, selector de método de pago (fila compacta de 4 opciones: Efectivo / Transferencia / Tarjeta / Otro) y la barra inferior fija con total + botón **Vender**. El botón queda deshabilitado hasta que haya productos *y* un método de pago elegido.
+- **El botón "Vender" ahora pide confirmación** con un popup nativo (`confirm()`) que resume la venta (productos, total, método de pago) antes de registrarla. Cancelar deja el carrito intacto.
+- **Anular una venta también pide confirmación** ahora, con un popup que muestra qué venta se anula (ítems, total, método) y aclara que se devuelve el stock y se descuenta del corte. Al confirmar, se re-renderiza toda la pantalla, así el chip del corte y los badges de stock de las tarjetas reflejan la devolución al instante (antes el chip quedaba con el total viejo hasta navegar).
+- Se eliminó la vista `app/js/views/carrito.js` (su lógica de carrito/venta se movió a `vender.js`); se sacó del `index.html`, del router en `nav.js` (ya no existe la screen `"carrito"`, ni el flag `nav.checkout`; se agregó `nav.payMethod`) y del `scripts/build-standalone.js`. En CSS se reemplazaron `.checkout-summary` / `.pay-choice*` por `.pay-row` / `.pay-opt`.
+- Verificado con el navegador headless: alta de venta con confirmación (y cancelación sin efecto), anulación con confirmación (y cancelación sin efecto), totales/stock/chip cuadrando después de cada operación, sin errores de consola. `standalone/index.html` regenerado.
+
+## Nuevo catálogo de productos + stock compartido en Buffet + "Consumo misionero" (2026-08-31)
+
+- **Catálogo actualizado según el relevamiento definitivo:**
+  - **Buffet:** Choripán + bebida ($10.000), 2 choripán + bebida ($18.000), Hamburguesa + bebida ($10.000), 2 hamburguesa + bebida ($18.000), Bebida ($1.000), Café ($1.000), Té ($1.000), Torta ($3.000). Todo controla stock por defecto: los combos y la bebida descuentan de los pools; Café/Té/Torta tienen stock propio (control activado por defecto, editable como cualquier producto).
+  - **Tickets:** 1 juego ($1.000), 1 tira (5) ($3.000), 2 tiras (10) ($5.000). Sin control de stock. (Se mantiene el nombre visible "Tickets" y la clave interna `tickets`.)
+  - **Entradas:** única opción "Entrada en puerta" ($2.000), con control de stock **apagado por defecto** (activable desde la pantalla Stock).
+- **Stock compartido (pools) en Buffet.** Se introdujo el concepto de *pool de stock*: un recurso del que descuentan uno o varios productos. Buffet tiene 3 pools — **Choripán, Hamburguesa, Bebida**. Cada producto vendible define una `recipe` (ej. "2 choripán + bebida" descuenta 2 de Choripán y 1 de Bebida). Vender una bebida sola o cualquier combo que la incluya descuenta del mismo stock de Bebida. Café/Té/Torta no controlan stock.
+  - En la grilla de Vender, cada combo muestra "Alcanza para N" (el mínimo entre `stock_pool / unidades_receta` de todos sus pools) y se deshabilita cuando algún pool no alcanza — considerando también lo que ya hay en el carrito (si el carrito reserva toda la Bebida, se deshabilitan todos los combos con bebida, no solo el que tocaste).
+  - Al cerrar la venta se descuenta de los pools; al anular se devuelve. El aviso de "stock bajo" mira el nivel de los pools tocados.
+- **Pantalla Stock:** nueva sección **"Stock del puesto"** arriba, con los pools (Choripán / Hamburguesa / Bebida) y sus controles `−/input/+/+10`. La sección "Productos" ahora, para los combos, muestra la receta ("Usa 2× Choripán + 1× Bebida") en vez del toggle de stock propio; el toggle "Controlar stock de este producto" queda solo para productos sin receta (Café, Té, Torta, Entrada en puerta).
+- **Seteo inicial del puesto:** "Stock inicial" lista los pools del puesto (además de cualquier producto con stock propio activado).
+- **Nuevo medio de pago "Consumo misionero"** en lugar de "Otro". Para no tocar el backend ni las columnas ya sincronizadas del Sheet, el **id interno se mantiene `otro`** — solo cambia la etiqueta visible (botón de pago, KPIs de Caja, resumen del puesto). Si más adelante se quiere una columna propia en el Sheet, hay que renombrar el id y ajustar `Code.gs` + re-`setupSheets` + re-deploy.
+- **Versionado del estado persistido:** se agregó `STATE_SCHEMA`. Al bootear/loguearse, un estado guardado en `localStorage` con otro esquema (o sin esquema, como los viejos) se descarta y el puesto arranca de cero — necesario porque el catálogo y la forma del estado cambiaron de raíz. Se subió a `3` al activar el control de stock de Café/Té/Torta por defecto, para que los puestos nuevos tomen el default.
+- Verificado con el navegador headless de punta a punta: seteo con los 3 pools, ventas de combos descontando la cantidad correcta de cada pool, deshabilitado cruzado por reservas del carrito, anulación devolviendo el stock, reposición de pools desde la pantalla Stock, y los otros dos puestos con su catálogo nuevo. Sin errores de consola. `standalone/index.html` regenerado.
+
+## Reorganización de la planilla de Sheets: 3 pestañas (2026-08-31)
+
+Se reemplazó la estructura de 4 pestañas (`Movimientos`, `Resumen por venta`, `Resumen por cierre`, `Cierre de puesto`) por 3:
+
+- **DetalleVentas** — una fila por producto vendido, con `venta_id` que agrupa las líneas de la misma venta. Columnas: timestamp, venta_id, puesto (tipo/id/voluntario), corte_id, producto, cantidad, precio_unitario, subtotal, metodo_pago, estado (activa/anulada), total_venta. Las líneas de una venta anulada quedan con `estado = anulada` (no se borran).
+- **Cierres** — una fila por cierre de corte (`tipo_cierre = corte`) y una por cierre final de puesto (`tipo_cierre = puesto`). Incluye el desglose de montos $ por método de pago (`monto_efectivo/transferencia/tarjeta/otro`), además de caja inicial, esperado, contado, diferencia, retirado y final. El cierre final de un puesto genera dos filas (la del último corte + el rollup de la sesión).
+- **MovimientosStock** — una fila por cada delta de stock: `venta`, `anulacion_venta`, `ajuste_suma`, `ajuste_resta`. En Buffet cada combo descuenta de sus ingredientes, así que "2 choripán + bebida" genera 2 filas (−2 Choripán, −1 Bebida). `stock_resultante` se completa solo en los ajustes manuales; `venta_id` linkea las filas de venta/anulación con DetalleVentas. Productos sin control de stock no generan filas.
+
+Cambios de implementación:
+- `appsscript/Code.gs`: nuevas `HEADERS` y `SHEET_*`, `doPost` escribe `data.detalleVentas` → DetalleVentas, `data.movimientosStock` → MovimientosStock, `data.cierre` + `data.cierrePuesto` → Cierres. `validarToken_` sin cambios (sigue usando `data.cierre.puesto_tipo/puesto_id`).
+- `app/js/sync.js`: `buildCortePayload` reconstruye `detalleVentas` (por item de cada venta) y `movimientosStock` (reconstruyendo los deltas de pool/producto desde `op.items` + recetas para ventas/anulaciones, y desde los `reposicion` del log para ajustes). `buildCierrePuestoPayload` y el `cierre` del corte ahora comparten exactamente el mismo set de columnas (helper `cierreRow_`), así apilan en la misma pestaña.
+- `app/js/format.js`: helper `makeId(prefix)` para ids cortos.
+- `app/js/views/vender.js`: cada venta se registra con `id` (`makeId("v")`); la anulación guarda `ventaId` con el id de la venta original, para poder linkear en el Sheet.
+- **Requiere** correr `setupSheets` de nuevo y re-desplegar el Web App. Las pestañas viejas quedan sin uso (se pueden borrar a mano).
+- Docs actualizados: `spec-fase2-sheets.md` (sección 3 reescrita), `deploy-apps-script.md` (paso 6).
+- Verificado con el navegador headless: se construyó el payload de un corte con venta de combo (2 filas de stock por ingrediente), café (sin fila de stock), venta anulada (línea `anulada` en DetalleVentas + par venta/anulacion_venta en MovimientosStock que netea a 0), ajustes manuales ±, y el rollup de puesto. Todas las filas cuadran 1:1 con los encabezados de su pestaña (sin claves de más ni de menos). Puesto Tickets: DetalleVentas OK, MovimientosStock vacío.
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.

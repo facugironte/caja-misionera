@@ -1,26 +1,31 @@
 /**
- * Caja Misionera — recibe el paquete de cada corte cerrado y lo escribe
- * en las pestañas "Movimientos", "Resumen por venta" y "Resumen por cierre"
- * de la planilla a la que este script está ligado.
+ * Caja Misionera — recibe el paquete de cada corte cerrado y lo escribe en la
+ * planilla ligada a este script, en tres pestañas:
+ *
+ *   - "DetalleVentas"     una fila por producto vendido, con un id de venta que
+ *                         agrupa las líneas de la misma venta.
+ *   - "Cierres"           una fila por cada cierre de corte y una por el cierre
+ *                         final del puesto (columna tipo_cierre), con el detalle
+ *                         de montos $ por método de pago.
+ *   - "MovimientosStock"  una fila por cada cambio de stock: por venta, por
+ *                         anulación de venta, y por ajuste manual (suma/resta).
  *
  * Desplegar como Web App (Implementar > Nueva implementación > Aplicación web),
  * acceso "Cualquier usuario". Ver docs/deploy-apps-script.md para el paso a paso.
  */
 
-var SHEET_MOVIMIENTOS = "Movimientos";
-var SHEET_VENTAS = "Resumen por venta";
-var SHEET_CIERRES = "Resumen por cierre";
-var SHEET_CIERRE_PUESTO = "Cierre de puesto";
+var SHEET_DETALLE_VENTAS = "DetalleVentas";
+var SHEET_CIERRES = "Cierres";
+var SHEET_MOV_STOCK = "MovimientosStock";
 
 var HEADERS = {};
-HEADERS[SHEET_MOVIMIENTOS] = ["timestamp", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "tipo_movimiento", "producto", "cantidad", "motivo", "monto", "metodo_pago"];
-HEADERS[SHEET_VENTAS] = ["timestamp", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "cant_items", "monto_total", "metodo_pago", "estado"];
-HEADERS[SHEET_CIERRES] = ["puesto_tipo", "puesto_id", "voluntario", "corte_id", "apertura", "cierre", "caja_inicial", "efectivo_esperado", "efectivo_contado", "diferencia", "cant_ventas", "monto_total_vendido", "efectivo_retirado", "efectivo_final_puesto"];
-HEADERS[SHEET_CIERRE_PUESTO] = ["puesto_tipo", "puesto_id", "voluntario", "sesion_inicio", "sesion_fin", "cant_cortes", "cant_ventas", "monto_efectivo", "monto_transferencia", "monto_tarjeta", "monto_otro", "monto_total", "caja_inicial_puesto", "efectivo_contado_final", "efectivo_retirado_final"];
+HEADERS[SHEET_DETALLE_VENTAS] = ["timestamp", "venta_id", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "producto", "cantidad", "precio_unitario", "subtotal", "metodo_pago", "estado", "total_venta"];
+HEADERS[SHEET_CIERRES] = ["timestamp", "tipo_cierre", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "apertura", "cierre", "cant_cortes", "cant_ventas", "monto_efectivo", "monto_transferencia", "monto_tarjeta", "monto_otro", "monto_total_vendido", "caja_inicial", "efectivo_esperado", "efectivo_contado", "diferencia", "efectivo_retirado", "efectivo_final"];
+HEADERS[SHEET_MOV_STOCK] = ["timestamp", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "tipo", "item", "delta", "stock_resultante", "venta_id", "motivo"];
 
 /**
  * Ejecutar una vez a mano desde el editor de Apps Script (menú Ejecutar > setupSheets)
- * para crear las tres pestañas con sus encabezados. Es seguro volver a ejecutarla:
+ * para crear las pestañas con sus encabezados. Es seguro volver a ejecutarla:
  * no borra filas existentes, solo asegura que existan la pestaña y el encabezado.
  */
 function setupSheets() {
@@ -41,10 +46,12 @@ function doPost(e) {
       return jsonOutput_({ ok: false, error: "token inválido" });
     }
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    appendRows_(ss, SHEET_MOVIMIENTOS, data.movimientos || []);
-    appendRows_(ss, SHEET_VENTAS, data.ventas || []);
-    if (data.cierre) appendRows_(ss, SHEET_CIERRES, [data.cierre]);
-    if (data.cierrePuesto) appendRows_(ss, SHEET_CIERRE_PUESTO, [data.cierrePuesto]);
+    appendRows_(ss, SHEET_DETALLE_VENTAS, data.detalleVentas || []);
+    appendRows_(ss, SHEET_MOV_STOCK, data.movimientosStock || []);
+    var cierres = [];
+    if (data.cierre) cierres.push(data.cierre);
+    if (data.cierrePuesto) cierres.push(data.cierrePuesto);
+    appendRows_(ss, SHEET_CIERRES, cierres);
     return jsonOutput_({ ok: true, corte_id: data.corte_id });
   } catch (err) {
     return jsonOutput_({ ok: false, error: String(err) });
