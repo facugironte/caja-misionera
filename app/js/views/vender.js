@@ -138,7 +138,7 @@ function renderVenderCart() {
   html += "</div>";
 
   html += '<div class="eyebrow">Método de pago</div><div class="pay-row" id="payRow">';
-  PAY_METHODS.forEach(function (m) {
+  payMethodsFor(nav.stand).forEach(function (m) {
     html += '<button type="button" class="pay-opt' + (nav.payMethod === m.id ? " sel" : "") + '" data-pay="' + m.id + '">' +
       '<span class="ic">' + (PAY_ICON[m.id] || "") + "</span>" + m.label + "</button>";
   });

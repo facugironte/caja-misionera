@@ -156,6 +156,19 @@ Cambios de implementación:
 - Docs actualizados: `spec-fase2-sheets.md` (sección 3 reescrita), `deploy-apps-script.md` (paso 6).
 - Verificado con el navegador headless: se construyó el payload de un corte con venta de combo (2 filas de stock por ingrediente), café (sin fila de stock), venta anulada (línea `anulada` en DetalleVentas + par venta/anulacion_venta en MovimientosStock que netea a 0), ajustes manuales ±, y el rollup de puesto. Todas las filas cuadran 1:1 con los encabezados de su pestaña (sin claves de más ni de menos). Puesto Tickets: DetalleVentas OK, MovimientosStock vacío.
 
+## Hamburguesa veggie + métodos de pago por puesto (2026-09-01)
+
+- **Hamburguesa veggie en Buffet:** se agregó un pool de stock aparte (`hambveg`, "Hamburguesa veggie", stock inicial 60) y dos productos que reflejan los de la hamburguesa común: "Hamburguesa veggie + bebida" ($10.000) y "2 hamburguesa veggie + bebida" ($18.000), con receta contra `hambveg` + `bebida`. Descuenta de su propio stock, no del de la hamburguesa de carne.
+- **Métodos de pago según el puesto** (`payMethodsFor(standKey)` en `data.js`):
+  - **Consumo misionero** (id interno `otro`): solo en Buffet (`stands: ["buffet"]`).
+  - **QR**: es el ex "Transferencia" — solo cambió la etiqueta visible (id interno `transferencia` sin tocar, para no romper columnas del Sheet ni `totals`). Disponible en todos los puestos.
+  - **Tarjeta**: solo en puestos de comida (`foodOnly` + `food: true` en el stand). Hoy eso es solo Buffet.
+  - **Efectivo**: siempre.
+  - Resultado: Buffet ofrece los 4; Tickets y Entradas ofrecen Efectivo + QR.
+- La grilla de KPIs de Caja renombró "Transferencia" → "QR" y "Ventas transferencias" → "Ventas QR". Las columnas del Sheet (`monto_transferencia`, `monto_otro`) no cambian.
+- `STATE_SCHEMA` a `4` (cambió el catálogo del Buffet: pool y productos nuevos).
+- Verificado en el navegador: grilla del Buffet con los 10 productos sin romper layout; venta de combo veggie descontando de `hambveg` (y no de `hamb`) y de `bebida`, con las filas correctas en MovimientosStock; selector de pago mostrando 4 opciones en Buffet y 2 en Tickets/Entradas. `standalone/index.html` regenerado.
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.

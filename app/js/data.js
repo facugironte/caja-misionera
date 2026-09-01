@@ -39,10 +39,11 @@ function product(id, icon, name, price, opts) {
 
 var STANDS = {
   buffet: {
-    label: "Buffet", sub: "Comidas y bebidas", icon: "🍔",
+    label: "Buffet", sub: "Comidas y bebidas", icon: "🍔", food: true,
     pools: [
       pool("chori", "🌭", "Choripán", { stock: 150, thresholds: { mucho: 100, medio: 50, poco: 20 } }),
       pool("hamb", "🍔", "Hamburguesa", { stock: 150, thresholds: { mucho: 100, medio: 50, poco: 20 } }),
+      pool("hambveg", "🥬", "Hamburguesa veggie", { stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } }),
       pool("bebida", "🥤", "Bebida", { stock: 200, thresholds: { mucho: 140, medio: 70, poco: 25 } })
     ],
     products: [
@@ -50,6 +51,8 @@ var STANDS = {
       product("chori2_beb", "🌭", "2 choripán + bebida", 18000, { recipe: { chori: 2, bebida: 1 } }),
       product("hamb_beb", "🍔", "Hamburguesa + bebida", 10000, { recipe: { hamb: 1, bebida: 1 } }),
       product("hamb2_beb", "🍔", "2 hamburguesa + bebida", 18000, { recipe: { hamb: 2, bebida: 1 } }),
+      product("hambveg_beb", "🥬", "Hamburguesa veggie + bebida", 10000, { recipe: { hambveg: 1, bebida: 1 } }),
+      product("hambveg2_beb", "🥬", "2 hamburguesa veggie + bebida", 18000, { recipe: { hambveg: 2, bebida: 1 } }),
       product("bebida", "🥤", "Bebida", 1000, { recipe: { bebida: 1 } }),
       product("cafe", "☕", "Café", 1000, { controlled: true, stock: 100, thresholds: { mucho: 60, medio: 30, poco: 10 } }),
       product("te", "🍵", "Té", 1000, { controlled: true, stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } }),
@@ -72,11 +75,24 @@ var STANDS = {
   }
 };
 
-// Nota: el id interno "otro" se mantiene (columnas del Sheet, totals/cumulative) —
-// solo cambia la etiqueta visible a "Consumo misionero".
+// Los id internos ("transferencia", "otro") se mantienen fijos (columnas del Sheet,
+// totals/cumulative); solo cambian etiquetas y en qué puestos se ofrecen.
+//   - "transferencia": etiqueta visible "QR".
+//   - "tarjeta": foodOnly -> solo en puestos con food:true.
+//   - "otro" ("Consumo misionero"): stands -> solo en los puestos listados.
 var PAY_METHODS = [
   { id: "efectivo", label: "Efectivo" },
-  { id: "transferencia", label: "Transferencia" },
-  { id: "tarjeta", label: "Tarjeta" },
-  { id: "otro", label: "Consumo misionero" }
+  { id: "transferencia", label: "QR" },
+  { id: "tarjeta", label: "Tarjeta", foodOnly: true },
+  { id: "otro", label: "Consumo misionero", stands: ["buffet"] }
 ];
+
+// Métodos de pago disponibles en un puesto dado.
+function payMethodsFor(standKey) {
+  var s = STANDS[standKey] || {};
+  return PAY_METHODS.filter(function (m) {
+    if (m.stands) return m.stands.indexOf(standKey) >= 0;
+    if (m.foodOnly) return !!s.food;
+    return true;
+  });
+}

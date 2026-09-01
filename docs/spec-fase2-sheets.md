@@ -43,7 +43,7 @@ Una fila por cada producto dentro de cada venta. Las líneas de una misma venta 
 | cantidad | Unidades de ese producto en la venta |
 | precio_unitario | Precio unitario |
 | subtotal | cantidad × precio_unitario |
-| metodo_pago | efectivo / transferencia / tarjeta / otro (etiqueta visible de `otro`: "Consumo misionero") |
+| metodo_pago | efectivo / transferencia / tarjeta / otro — ids internos fijos; etiquetas visibles: `transferencia`→"QR", `otro`→"Consumo misionero". Qué métodos se ofrecen depende del puesto (ver `payMethodsFor`). |
 | estado | activa / anulada (las líneas de una venta anulada quedan con `anulada`) |
 | total_venta | Total de toda la venta (repetido en cada línea) |
 

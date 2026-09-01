@@ -28,7 +28,7 @@ function renderCajaBody() {
     html += '<div class="stat-grid">' +
       stat("Ventas", fmt.format(t.ventas)) +
       stat("Efectivo", money(t.efectivo)) +
-      stat("Transferencia", money(t.transferencia)) +
+      stat("QR", money(t.transferencia)) +
       stat("Tarjeta", money(t.tarjeta)) +
       stat("Consumo mis.", money(t.otro)) +
       '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
@@ -39,7 +39,7 @@ function renderCajaBody() {
       '<div class="cash-row"><span class="k">Cantidad de ventas totales</span><span class="v">' + fmt.format(st.cumulative.ventas) + "</span></div>" +
       '<div class="cash-row"><span class="k">Efectivo inicial</span><span class="v">' + money(st.cajaInicial) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas efectivo</span><span class="v">' + money(st.cumulative.efectivo) + "</span></div>" +
-      '<div class="cash-row"><span class="k">Ventas transferencias</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Ventas QR</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas tarjetas</span><span class="v">' + money(st.cumulative.tarjeta) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas consumo misionero</span><span class="v">' + money(st.cumulative.otro) + "</span></div>" +
       '<div class="cash-row"><span class="k"><strong>Ventas totales</strong></span><span class="v">' + money(ventasTotalMonto) + "</span></div>" +
@@ -58,7 +58,7 @@ function renderCajaBody() {
     html += '<div class="stat-grid">' +
       stat("Ventas", fmt.format(t.ventas)) +
       stat("Efectivo", money(t.efectivo)) +
-      stat("Transferencia", money(t.transferencia)) +
+      stat("QR", money(t.transferencia)) +
       stat("Tarjeta", money(t.tarjeta)) +
       stat("Consumo mis.", money(t.otro)) +
       '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
