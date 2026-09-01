@@ -169,6 +169,14 @@ Cambios de implementación:
 - `STATE_SCHEMA` a `4` (cambió el catálogo del Buffet: pool y productos nuevos).
 - Verificado en el navegador: grilla del Buffet con los 10 productos sin romper layout; venta de combo veggie descontando de `hambveg` (y no de `hamb`) y de `bebida`, con las filas correctas en MovimientosStock; selector de pago mostrando 4 opciones en Buffet y 2 en Tickets/Entradas. `standalone/index.html` regenerado.
 
+## Tarjetas de producto más compactas en Vender (2026-09-01)
+
+- **Layout de la tarjeta:** de una columna vertical (ícono arriba, nombre, precio, chip de stock) a dos filas: encabezado (**ícono a la izquierda del nombre**, con el badge de cantidad del carrito al final de la fila) y pie (precio + chip de stock). El alto de cada tarjeta bajó de ~122px a ~60-70px.
+- **Chip de stock minimalista:** ahora muestra **solo el número disponible** con el color del estado (verde/amarillo/naranja/rojo). Se sacó el texto ("Alcanza para" / "Stock:") y la etiqueta ("MUCHO", etc.). Productos sin control de stock (Tickets, Entradas) no muestran chip. La pantalla Stock (`seteo-stock`) sigue con el formato verboso ("Stock: N · MUCHO"), no se tocó.
+- **Media query de celular** (`max-width: 480px`, la primera del proyecto para el grid de productos): fuerza 2 columnas, achica padding/fuentes/gap y el badge de carrito. En pantallas más anchas se mantiene el grid `auto-fill minmax(150px, 1fr)`.
+- Implementación: `productStockLine` en `vender.js` devuelve `<span class="stock-chip stock-NIVEL">N</span>` o `""`; la grilla arma `.tile-head` / `.tile-foot`. CSS: nuevas reglas `.tile-head/.tile-foot/.stock-chip`, `.cart-badge` deja de ser `position:absolute` (ahora es el último ítem flex del encabezado).
+- Verificado en el navegador a 375px y en ancho normal: ícono a la izquierda, chip solo-número con color, 2 columnas sin overflow, tarjeta deshabilitada mostrando "0" en rojo, Tickets sin chip.
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.

@@ -44,21 +44,23 @@ function productRemaining(st, p) {
   return null;
 }
 
-// Chip de stock para la tarjeta de producto en la grilla.
+// Chip de stock para la tarjeta de producto en la grilla: solo el número
+// disponible y el color del estado. Sin control de stock -> sin chip.
 function productStockLine(st, p) {
+  var rem = productRemaining(st, p);
+  if (rem === null) return "";
+  var lvl;
   if (p.recipe) {
-    var rem = productRemaining(st, p);
-    if (rem === null) return stockLine(p);
-    var worst = "mucho";
+    lvl = "mucho";
     Object.keys(p.recipe).forEach(function (poolId) {
       var pool = poolById(st, poolId);
-      if (pool && LEVEL_ORDER[pool.level] < LEVEL_ORDER[worst]) worst = pool.level;
+      if (pool && LEVEL_ORDER[pool.level] < LEVEL_ORDER[lvl]) lvl = pool.level;
     });
-    var cls = rem <= 0 ? "agotado" : worst;
-    var lbl = rem <= 0 ? "AGOTADO" : LEVEL_LABEL[worst];
-    return '<span class="stock-line stock-' + cls + '"><span class="dot"></span>Alcanza para ' + Math.max(0, rem) + " · " + lbl + "</span>";
+  } else {
+    lvl = p.level;
   }
-  return stockLine(p);
+  if (rem <= 0) lvl = "agotado";
+  return '<span class="stock-chip stock-' + lvl + '">' + Math.max(0, rem) + "</span>";
 }
 
 function renderVender() {
@@ -92,9 +94,13 @@ function renderVenderGrid() {
     btn.type = "button";
     btn.dataset.id = p.id;
     if (disabled) btn.setAttribute("disabled", "disabled");
-    btn.innerHTML = '<div class="icon">' + p.icon + '</div><div class="name">' + p.name +
-      '</div><div class="price">' + money(p.price) + "</div>" + productStockLine(st, p) +
-      (qty > 0 ? '<span class="cart-badge">' + qty + "</span>" : "");
+    btn.innerHTML =
+      '<div class="tile-head"><span class="icon">' + p.icon + '</span>' +
+      '<span class="name">' + p.name + "</span>" +
+      (qty > 0 ? '<span class="cart-badge">' + qty + "</span>" : "") +
+      "</div>" +
+      '<div class="tile-foot"><span class="price">' + money(p.price) + "</span>" +
+      productStockLine(st, p) + "</div>";
     btn.addEventListener("click", function () { addToCart(p.id); });
     wrap.appendChild(btn);
   });
