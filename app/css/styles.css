@@ -13,6 +13,7 @@
     --buffet: #D9501F;    --buffet-soft: #FFE8DC;
     --tickets: #6D4CF0;   --tickets-soft: #EDE7FF;
     --entradas: #1D8FC4;  --entradas-soft: #DFF3FC;
+    --rifas: #C2337A;     --rifas-soft: #FBE1EE;
 
     --stock-mucho: #2E9A57;   --stock-mucho-bg: #E3F5E9;
     --stock-medio: #B98A0E;   --stock-medio-bg: #FAF0D6;
@@ -33,6 +34,7 @@
   body[data-stand="buffet"]   { --stand-accent: var(--buffet);   --stand-soft: var(--buffet-soft); }
   body[data-stand="tickets"]  { --stand-accent: var(--tickets);  --stand-soft: var(--tickets-soft); }
   body[data-stand="entradas"] { --stand-accent: var(--entradas); --stand-soft: var(--entradas-soft); }
+  body[data-stand="rifas"]    { --stand-accent: var(--rifas);    --stand-soft: var(--rifas-soft); }
 
   * { box-sizing: border-box; }
   html, body { height: 100%; }
@@ -109,6 +111,7 @@
   .stand-card.c-buffet .mark   { background: var(--buffet-soft);   color: var(--buffet); }
   .stand-card.c-tickets .mark  { background: var(--tickets-soft);  color: var(--tickets); }
   .stand-card.c-entradas .mark { background: var(--entradas-soft); color: var(--entradas); }
+  .stand-card.c-rifas .mark    { background: var(--rifas-soft);    color: var(--rifas); }
   .stand-card h2 { font-family: var(--font-display); font-size: 16px; font-weight: 600; margin: 0; }
   .stand-card p { margin: 2px 0 0; font-size: 12.5px; color: var(--text-muted); }
   .stand-card .chev { margin-left: auto; color: var(--text-faint); font-size: 18px; }

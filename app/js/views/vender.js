@@ -32,6 +32,7 @@ function poolReserved(poolId) {
 // Cuántas unidades más de este producto se pueden agregar al carrito.
 // null = sin límite de stock.
 function productRemaining(st, p) {
+  if (!tracksStock(p)) return null;
   if (p.recipe) {
     var lim = Infinity;
     Object.keys(p.recipe).forEach(function (poolId) {
@@ -40,8 +41,7 @@ function productRemaining(st, p) {
     });
     return lim === Infinity ? null : lim;
   }
-  if (p.controlled) return p.stock - cartQty(p.id);
-  return null;
+  return p.stock - cartQty(p.id);
 }
 
 // Chip de stock para la tarjeta de producto en la grilla: solo el número
@@ -186,6 +186,7 @@ function applySaleStock(st, it, sign) {
   var p = st.products.filter(function (x) { return x.id === it.productId; })[0];
   if (!p) return;
   p.sold += sign * it.qty;
+  if (!tracksStock(p)) return;
   if (p.recipe) {
     Object.keys(p.recipe).forEach(function (poolId) {
       var pool = poolById(st, poolId);
@@ -193,7 +194,7 @@ function applySaleStock(st, it, sign) {
       pool.stock = Math.max(0, pool.stock - sign * p.recipe[poolId] * it.qty);
       pool.level = levelFor(pool.stock, pool.thresholds);
     });
-  } else if (p.controlled) {
+  } else {
     p.stock = Math.max(0, p.stock - sign * it.qty);
     p.level = levelFor(p.stock, p.thresholds);
   }
@@ -215,14 +216,14 @@ function finalizeSale(payMethodId) {
   var low = [];
   items.forEach(function (it) {
     var p = st.products.filter(function (x) { return x.id === it.productId; })[0];
-    if (!p) return;
+    if (!p || !tracksStock(p)) return;
     if (p.recipe) {
       Object.keys(p.recipe).forEach(function (poolId) {
         var pool = poolById(st, poolId);
         if (pool && (pool.level === "critico" || pool.level === "agotado") && low.indexOf(pool.name) < 0) low.push(pool.name);
       });
-    } else if (p.controlled && (p.level === "critico" || p.level === "agotado") && low.indexOf(p.name) < 0) {
-      low.push(p.name);
+    } else if (p.level === "critico" || p.level === "agotado") {
+      if (low.indexOf(p.name) < 0) low.push(p.name);
     }
   });
 

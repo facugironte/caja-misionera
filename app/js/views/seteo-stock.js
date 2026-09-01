@@ -33,7 +33,8 @@ function renderSeteoStock() {
     html += '<div class="head" data-toggle-expand="' + p.id + '">' +
       '<span class="icon">' + p.icon + '</span>' +
       '<div class="name-stock"><span class="name">' + p.name + '</span>' +
-      (p.recipe ? recipeLine(st, p) : stockLine(p)) + "</div>" +
+      (!tracksStock(p) ? '<span class="stock-line stock-sin"><span class="dot"></span>Sin control</span>'
+        : (p.recipe ? recipeLine(st, p) : stockLine(p))) + "</div>" +
       '<span class="price-display">' + money(p.price) + '</span>' +
       '<span class="expand-chev">' + (expanded ? "▲" : "▾") + '</span>' +
       "</div>";
@@ -41,18 +42,24 @@ function renderSeteoStock() {
       html += '<div class="stock-edit">';
       html += '<div class="mini-toggle"><span class="lbl">Precio</span>' +
         '<span class="price-field">$<input type="number" min="0" step="100" value="' + p.price + '" data-price="' + p.id + '"></span></div>';
-      if (!p.recipe) {
-        html += '<div class="mini-toggle" style="margin-top:10px;"><span class="lbl">Controlar stock de este producto</span>' +
-          '<button class="switch" data-prod-switch="' + p.id + '" data-on="' + p.controlled + '"></button></div>';
-        if (p.controlled) {
-          html += '<div class="stock-controls" style="margin-top:10px;justify-content:flex-start;">' +
-            '<span class="qty-group">' +
-            '<button class="qty-btn" data-repo="' + p.id + '" data-delta="-1">–</button>' +
-            '<input type="number" min="0" step="1" class="qty-num-input" value="' + p.stock + '" data-stock-input="' + p.id + '">' +
-            '<button class="qty-btn" data-repo="' + p.id + '" data-delta="1">+</button>' +
-            '<button class="qty-btn" data-repo="' + p.id + '" data-delta="10">+10</button>' +
-            "</span></div>";
+      html += '<div class="mini-toggle" style="margin-top:10px;"><span class="lbl">Controlar stock de este producto</span>' +
+        '<button class="switch" data-prod-switch="' + p.id + '" data-on="' + tracksStock(p) + '"></button></div>';
+      if (p.recipe) {
+        if (tracksStock(p)) {
+          html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);line-height:1.4;">Descuenta de: ' +
+            Object.keys(p.recipe).map(function (poolId) {
+              var pool = (st.pools || []).filter(function (x) { return x.id === poolId; })[0];
+              return p.recipe[poolId] + "× " + (pool ? pool.name : poolId);
+            }).join(" + ") + ". El stock se ajusta en cada uno arriba.</div>";
         }
+      } else if (p.controlled) {
+        html += '<div class="stock-controls" style="margin-top:10px;justify-content:flex-start;">' +
+          '<span class="qty-group">' +
+          '<button class="qty-btn" data-repo="' + p.id + '" data-delta="-1">–</button>' +
+          '<input type="number" min="0" step="1" class="qty-num-input" value="' + p.stock + '" data-stock-input="' + p.id + '">' +
+          '<button class="qty-btn" data-repo="' + p.id + '" data-delta="1">+</button>' +
+          '<button class="qty-btn" data-repo="' + p.id + '" data-delta="10">+10</button>' +
+          "</span></div>";
       }
       html += "</div>";
     }
@@ -82,9 +89,10 @@ function renderSeteoStock() {
   root.querySelectorAll("[data-prod-switch]").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var p = st.products.filter(function (x) { return x.id === btn.getAttribute("data-prod-switch"); })[0];
-      p.controlled = !p.controlled;
+      if (p.recipe) p.stockOff = !p.stockOff;
+      else p.controlled = !p.controlled;
       render();
-      showToast("Control de stock " + (p.controlled ? "activado" : "desactivado") + " para " + p.name + ".");
+      showToast("Control de stock " + (tracksStock(p) ? "activado" : "desactivado") + " para " + p.name + ".");
     });
   });
   root.querySelectorAll("[data-price]").forEach(function (inp) {

@@ -177,6 +177,23 @@ Cambios de implementación:
 - Implementación: `productStockLine` en `vender.js` devuelve `<span class="stock-chip stock-NIVEL">N</span>` o `""`; la grilla arma `.tile-head` / `.tile-foot`. CSS: nuevas reglas `.tile-head/.tile-foot/.stock-chip`, `.cart-badge` deja de ser `position:absolute` (ahora es el último ítem flex del encabezado).
 - Verificado en el navegador a 375px y en ancho normal: ícono a la izquierda, chip solo-número con color, 2 columnas sin overflow, tarjeta deshabilitada mostrando "0" en rojo, Tickets sin chip.
 
+## Puesto nuevo: Rifas (2026-09-01)
+
+- Cuarto puesto, `rifas` ("Rifas", 🍀). Productos: "1 rifa" ($4.000) y "3 rifas" ($10.000). Sin control de stock (como Tickets/Entradas; el toggle está disponible en la pantalla Stock si hiciera falta).
+- Métodos de pago: Efectivo + QR (no es puesto de comida ni Buffet, así que sin Tarjeta ni Consumo misionero — sale directo de `payMethodsFor`).
+- Color de marca propio (`--rifas` magenta, `--rifas-soft`), con su regla `body[data-stand="rifas"]` y `.stand-card.c-rifas .mark`.
+- No requiere tocar el backend: el token (`rifas:<slug>`) y la columna `puesto_tipo` del Sheet son genéricos. `STATE_SCHEMA` sin cambios (agregar un puesto no altera la forma del estado de los otros).
+- Verificado en el navegador: aparece en el login, venta de los 2 productos, pago Efectivo/QR, cierre de corte generando payload con `puesto_tipo: "rifas"` y 0 filas de MovimientosStock.
+
+## Toggle de "controlar stock" también para los combos (2026-09-01)
+
+- Antes, en la pantalla Stock, el switch "Controlar stock de este producto" solo aparecía para productos sin receta (Café/Té/Torta/Entrada). Los combos (Hamburguesa + bebida, etc.) no tenían forma de apagar el control.
+- Ahora el switch aparece para **todos** los productos. Para los combos flipea un flag nuevo `stockOff` (helper `tracksStock(p)`: receta -> `!stockOff`; sin receta -> `controlled`). Con el control apagado, ese combo **no descuenta de los pools**, no se limita por ellos, no muestra chip en Vender y no genera filas en MovimientosStock — la venta y la plata se registran igual.
+- En el panel expandido del combo, además del switch, se muestra un texto "Descuenta de: 2× Choripán + 1× Bebida…" (el stock se sigue editando en la sección "Stock del puesto", no por producto).
+- `applySaleStock`, `productRemaining`, el aviso de stock bajo (`vender.js`) y `stockRowsForSale_` (`sync.js`) ahora chequean `tracksStock(p)`.
+- Sin bump de `STATE_SCHEMA`: `stockOff` ausente en estados viejos = `undefined` = falsy = sigue controlando stock (comportamiento por defecto).
+- Verificado: combo con control apagado no toca los pools ni genera movimientos de stock, pero sí aparece en DetalleVentas; el switch en la pantalla Stock prende/apaga y el encabezado pasa a "Sin control".
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.
