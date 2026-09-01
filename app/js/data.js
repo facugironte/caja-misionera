@@ -11,7 +11,10 @@ var LEVEL_LABEL = { mucho: "MUCHO", medio: "MEDIO", poco: "POCO", critico: "CRÍ
 var LEVEL_ORDER = { mucho: 4, medio: 3, poco: 2, critico: 1, agotado: 0 };
 var PAY_ICON = { efectivo: "💵", transferencia: "📲", tarjeta: "💳", otro: "🙏" };
 
-// Stock compartido (ingrediente / recurso) del que descuentan uno o varios productos.
+// Stock compartido (ingrediente / recurso, ej. "Hamburguesa", "Bebida") del que
+// descuentan uno o varios productos vendibles. `controlled` (por defecto true) se
+// puede apagar desde la pantalla Stock: los combos que lo usan dejan de descontar
+// de él y de limitarse por él.
 function pool(id, icon, name, opts) {
   opts = opts || {};
   return {
@@ -23,26 +26,20 @@ function pool(id, icon, name, opts) {
 }
 
 // Producto vendible (botón). `recipe` mapea id de pool -> unidades que descuenta por venta;
-// si tiene recipe, el stock sale de los pools. `controlled` es el modo legacy de stock propio.
-// `stockOff` (solo para productos con receta) apaga el control de stock: no descuenta de
-// los pools ni se limita por ellos. Se prende/apaga desde la pantalla Stock.
+// si tiene recipe, el stock sale de los pools. `controlled` es el modo de stock propio
+// (productos sin receta, ej. Café/Té/Torta). El control de stock de un combo se maneja
+// en cada pool que usa (pool.controlled), no en el combo.
 function product(id, icon, name, price, opts) {
   opts = opts || {};
   return {
     id: id, icon: icon, name: name, price: price,
     recipe: opts.recipe || null,
-    stockOff: !!opts.stockOff,
     controlled: !!opts.controlled,
     stock: opts.stock || 0,
     thresholds: opts.thresholds || { mucho: 100, medio: 40, poco: 10 },
     approxLabel: opts.approxLabel || null,
     sold: 0
   };
-}
-
-// ¿Este producto sigue su stock? (receta contra pools, o stock propio legacy)
-function tracksStock(p) {
-  return p.recipe ? !p.stockOff : !!p.controlled;
 }
 
 var STANDS = {

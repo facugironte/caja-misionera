@@ -6,7 +6,7 @@ function renderSetup() {
   var html = header("Iniciar puesto", s.label);
   html += '<p class="note">Antes de vender, confirmá el stock con el que arranca este puesto y cuánto efectivo hay en la caja. Ese monto va a ser el valor inicial del puesto para el arqueo.</p>';
 
-  var pools = st.pools || [];
+  var pools = (st.pools || []).filter(function (p) { return p.controlled; });
   var controlled = st.products.filter(function (p) { return p.controlled; });
   html += '<div class="eyebrow">Stock inicial</div>';
   if (!pools.length && !controlled.length) {

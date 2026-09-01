@@ -441,7 +441,10 @@ var LEVEL_LABEL = { mucho: "MUCHO", medio: "MEDIO", poco: "POCO", critico: "CRÍ
 var LEVEL_ORDER = { mucho: 4, medio: 3, poco: 2, critico: 1, agotado: 0 };
 var PAY_ICON = { efectivo: "💵", transferencia: "📲", tarjeta: "💳", otro: "🙏" };
 
-// Stock compartido (ingrediente / recurso) del que descuentan uno o varios productos.
+// Stock compartido (ingrediente / recurso, ej. "Hamburguesa", "Bebida") del que
+// descuentan uno o varios productos vendibles. `controlled` (por defecto true) se
+// puede apagar desde la pantalla Stock: los combos que lo usan dejan de descontar
+// de él y de limitarse por él.
 function pool(id, icon, name, opts) {
   opts = opts || {};
   return {
@@ -453,26 +456,20 @@ function pool(id, icon, name, opts) {
 }
 
 // Producto vendible (botón). `recipe` mapea id de pool -> unidades que descuenta por venta;
-// si tiene recipe, el stock sale de los pools. `controlled` es el modo legacy de stock propio.
-// `stockOff` (solo para productos con receta) apaga el control de stock: no descuenta de
-// los pools ni se limita por ellos. Se prende/apaga desde la pantalla Stock.
+// si tiene recipe, el stock sale de los pools. `controlled` es el modo de stock propio
+// (productos sin receta, ej. Café/Té/Torta). El control de stock de un combo se maneja
+// en cada pool que usa (pool.controlled), no en el combo.
 function product(id, icon, name, price, opts) {
   opts = opts || {};
   return {
     id: id, icon: icon, name: name, price: price,
     recipe: opts.recipe || null,
-    stockOff: !!opts.stockOff,
     controlled: !!opts.controlled,
     stock: opts.stock || 0,
     thresholds: opts.thresholds || { mucho: 100, medio: 40, poco: 10 },
     approxLabel: opts.approxLabel || null,
     sold: 0
   };
-}
-
-// ¿Este producto sigue su stock? (receta contra pools, o stock propio legacy)
-function tracksStock(p) {
-  return p.recipe ? !p.stockOff : !!p.controlled;
 }
 
 var STANDS = {
@@ -697,13 +694,14 @@ function stockRowsForSale_(st, corteId, op, sign, tipo, motivo) {
   };
   op.items.forEach(function (it) {
     var p = (st.products || []).filter(function (x) { return x.id === it.productId; })[0];
-    if (!p || !tracksStock(p)) return;
+    if (!p) return;
     if (p.recipe) {
       Object.keys(p.recipe).forEach(function (poolId) {
         var pool = (st.pools || []).filter(function (x) { return x.id === poolId; })[0];
+        if (pool && !pool.controlled) return;
         rows.push(Object.assign({}, base, { item: pool ? pool.name : poolId, delta: sign * p.recipe[poolId] * it.qty }));
       });
-    } else {
+    } else if (p.controlled) {
       rows.push(Object.assign({}, base, { item: p.name, delta: sign * it.qty }));
     }
   });
@@ -962,7 +960,7 @@ function renderSetup() {
   var html = header("Iniciar puesto", s.label);
   html += '<p class="note">Antes de vender, confirmá el stock con el que arranca este puesto y cuánto efectivo hay en la caja. Ese monto va a ser el valor inicial del puesto para el arqueo.</p>';
 
-  var pools = st.pools || [];
+  var pools = (st.pools || []).filter(function (p) { return p.controlled; });
   var controlled = st.products.filter(function (p) { return p.controlled; });
   html += '<div class="eyebrow">Stock inicial</div>';
   if (!pools.length && !controlled.length) {
@@ -1053,16 +1051,16 @@ function poolReserved(poolId) {
 // Cuántas unidades más de este producto se pueden agregar al carrito.
 // null = sin límite de stock.
 function productRemaining(st, p) {
-  if (!tracksStock(p)) return null;
   if (p.recipe) {
     var lim = Infinity;
     Object.keys(p.recipe).forEach(function (poolId) {
       var pool = poolById(st, poolId);
-      if (pool) lim = Math.min(lim, Math.floor((pool.stock - poolReserved(poolId)) / p.recipe[poolId]));
+      if (pool && pool.controlled) lim = Math.min(lim, Math.floor((pool.stock - poolReserved(poolId)) / p.recipe[poolId]));
     });
     return lim === Infinity ? null : lim;
   }
-  return p.stock - cartQty(p.id);
+  if (p.controlled) return p.stock - cartQty(p.id);
+  return null;
 }
 
 // Chip de stock para la tarjeta de producto en la grilla: solo el número
@@ -1075,7 +1073,7 @@ function productStockLine(st, p) {
     lvl = "mucho";
     Object.keys(p.recipe).forEach(function (poolId) {
       var pool = poolById(st, poolId);
-      if (pool && LEVEL_ORDER[pool.level] < LEVEL_ORDER[lvl]) lvl = pool.level;
+      if (pool && pool.controlled && LEVEL_ORDER[pool.level] < LEVEL_ORDER[lvl]) lvl = pool.level;
     });
   } else {
     lvl = p.level;
@@ -1207,15 +1205,14 @@ function applySaleStock(st, it, sign) {
   var p = st.products.filter(function (x) { return x.id === it.productId; })[0];
   if (!p) return;
   p.sold += sign * it.qty;
-  if (!tracksStock(p)) return;
   if (p.recipe) {
     Object.keys(p.recipe).forEach(function (poolId) {
       var pool = poolById(st, poolId);
-      if (!pool) return;
+      if (!pool || !pool.controlled) return;
       pool.stock = Math.max(0, pool.stock - sign * p.recipe[poolId] * it.qty);
       pool.level = levelFor(pool.stock, pool.thresholds);
     });
-  } else {
+  } else if (p.controlled) {
     p.stock = Math.max(0, p.stock - sign * it.qty);
     p.level = levelFor(p.stock, p.thresholds);
   }
@@ -1237,13 +1234,13 @@ function finalizeSale(payMethodId) {
   var low = [];
   items.forEach(function (it) {
     var p = st.products.filter(function (x) { return x.id === it.productId; })[0];
-    if (!p || !tracksStock(p)) return;
+    if (!p) return;
     if (p.recipe) {
       Object.keys(p.recipe).forEach(function (poolId) {
         var pool = poolById(st, poolId);
-        if (pool && (pool.level === "critico" || pool.level === "agotado") && low.indexOf(pool.name) < 0) low.push(pool.name);
+        if (pool && pool.controlled && (pool.level === "critico" || pool.level === "agotado") && low.indexOf(pool.name) < 0) low.push(pool.name);
       });
-    } else if (p.level === "critico" || p.level === "agotado") {
+    } else if (p.controlled && (p.level === "critico" || p.level === "agotado")) {
       if (low.indexOf(p.name) < 0) low.push(p.name);
     }
   });
@@ -1559,13 +1556,17 @@ function renderSeteoStock() {
         '<span class="icon">' + p.icon + '</span>' +
         '<div class="name-stock"><span class="name">' + p.name + '</span>' + stockLine(p) + "</div>" +
         "</div>";
-      html += '<div class="stock-controls" style="margin-top:10px;justify-content:flex-start;">' +
-        '<span class="qty-group">' +
-        '<button class="qty-btn" data-repo-pool="' + p.id + '" data-delta="-1">–</button>' +
-        '<input type="number" min="0" step="1" class="qty-num-input" value="' + p.stock + '" data-stock-input-pool="' + p.id + '">' +
-        '<button class="qty-btn" data-repo-pool="' + p.id + '" data-delta="1">+</button>' +
-        '<button class="qty-btn" data-repo-pool="' + p.id + '" data-delta="10">+10</button>' +
-        "</span></div>";
+      html += '<div class="mini-toggle" style="margin-top:10px;"><span class="lbl">Controlar stock</span>' +
+        '<button class="switch" data-pool-switch="' + p.id + '" data-on="' + p.controlled + '"></button></div>';
+      if (p.controlled) {
+        html += '<div class="stock-controls" style="margin-top:10px;justify-content:flex-start;">' +
+          '<span class="qty-group">' +
+          '<button class="qty-btn" data-repo-pool="' + p.id + '" data-delta="-1">–</button>' +
+          '<input type="number" min="0" step="1" class="qty-num-input" value="' + p.stock + '" data-stock-input-pool="' + p.id + '">' +
+          '<button class="qty-btn" data-repo-pool="' + p.id + '" data-delta="1">+</button>' +
+          '<button class="qty-btn" data-repo-pool="' + p.id + '" data-delta="10">+10</button>' +
+          "</span></div>";
+      }
       html += "</div>";
     });
   }
@@ -1577,8 +1578,7 @@ function renderSeteoStock() {
     html += '<div class="head" data-toggle-expand="' + p.id + '">' +
       '<span class="icon">' + p.icon + '</span>' +
       '<div class="name-stock"><span class="name">' + p.name + '</span>' +
-      (!tracksStock(p) ? '<span class="stock-line stock-sin"><span class="dot"></span>Sin control</span>'
-        : (p.recipe ? recipeLine(st, p) : stockLine(p))) + "</div>" +
+      (p.recipe ? recipeLine(st, p) : stockLine(p)) + "</div>" +
       '<span class="price-display">' + money(p.price) + '</span>' +
       '<span class="expand-chev">' + (expanded ? "▲" : "▾") + '</span>' +
       "</div>";
@@ -1586,17 +1586,11 @@ function renderSeteoStock() {
       html += '<div class="stock-edit">';
       html += '<div class="mini-toggle"><span class="lbl">Precio</span>' +
         '<span class="price-field">$<input type="number" min="0" step="100" value="' + p.price + '" data-price="' + p.id + '"></span></div>';
-      html += '<div class="mini-toggle" style="margin-top:10px;"><span class="lbl">Controlar stock de este producto</span>' +
-        '<button class="switch" data-prod-switch="' + p.id + '" data-on="' + tracksStock(p) + '"></button></div>';
-      if (p.recipe) {
-        if (tracksStock(p)) {
-          html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);line-height:1.4;">Descuenta de: ' +
-            Object.keys(p.recipe).map(function (poolId) {
-              var pool = (st.pools || []).filter(function (x) { return x.id === poolId; })[0];
-              return p.recipe[poolId] + "× " + (pool ? pool.name : poolId);
-            }).join(" + ") + ". El stock se ajusta en cada uno arriba.</div>";
-        }
-      } else if (p.controlled) {
+      if (!p.recipe) {
+        html += '<div class="mini-toggle" style="margin-top:10px;"><span class="lbl">Controlar stock de este producto</span>' +
+          '<button class="switch" data-prod-switch="' + p.id + '" data-on="' + p.controlled + '"></button></div>';
+      }
+      if (!p.recipe && p.controlled) {
         html += '<div class="stock-controls" style="margin-top:10px;justify-content:flex-start;">' +
           '<span class="qty-group">' +
           '<button class="qty-btn" data-repo="' + p.id + '" data-delta="-1">–</button>' +
@@ -1633,10 +1627,17 @@ function renderSeteoStock() {
   root.querySelectorAll("[data-prod-switch]").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var p = st.products.filter(function (x) { return x.id === btn.getAttribute("data-prod-switch"); })[0];
-      if (p.recipe) p.stockOff = !p.stockOff;
-      else p.controlled = !p.controlled;
+      p.controlled = !p.controlled;
       render();
-      showToast("Control de stock " + (tracksStock(p) ? "activado" : "desactivado") + " para " + p.name + ".");
+      showToast("Control de stock " + (p.controlled ? "activado" : "desactivado") + " para " + p.name + ".");
+    });
+  });
+  root.querySelectorAll("[data-pool-switch]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var p = (st.pools || []).filter(function (x) { return x.id === btn.getAttribute("data-pool-switch"); })[0];
+      p.controlled = !p.controlled;
+      render();
+      showToast("Control de stock " + (p.controlled ? "activado" : "desactivado") + " para " + p.name + ".");
     });
   });
   root.querySelectorAll("[data-price]").forEach(function (inp) {

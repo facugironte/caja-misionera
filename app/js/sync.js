@@ -87,13 +87,14 @@ function stockRowsForSale_(st, corteId, op, sign, tipo, motivo) {
   };
   op.items.forEach(function (it) {
     var p = (st.products || []).filter(function (x) { return x.id === it.productId; })[0];
-    if (!p || !tracksStock(p)) return;
+    if (!p) return;
     if (p.recipe) {
       Object.keys(p.recipe).forEach(function (poolId) {
         var pool = (st.pools || []).filter(function (x) { return x.id === poolId; })[0];
+        if (pool && !pool.controlled) return;
         rows.push(Object.assign({}, base, { item: pool ? pool.name : poolId, delta: sign * p.recipe[poolId] * it.qty }));
       });
-    } else {
+    } else if (p.controlled) {
       rows.push(Object.assign({}, base, { item: p.name, delta: sign * it.qty }));
     }
   });

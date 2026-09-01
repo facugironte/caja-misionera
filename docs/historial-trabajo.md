@@ -185,14 +185,17 @@ Cambios de implementación:
 - No requiere tocar el backend: el token (`rifas:<slug>`) y la columna `puesto_tipo` del Sheet son genéricos. `STATE_SCHEMA` sin cambios (agregar un puesto no altera la forma del estado de los otros).
 - Verificado en el navegador: aparece en el login, venta de los 2 productos, pago Efectivo/QR, cierre de corte generando payload con `puesto_tipo: "rifas"` y 0 filas de MovimientosStock.
 
-## Toggle de "controlar stock" también para los combos (2026-09-01)
+## Toggle de "controlar stock" sobre el item base, no sobre el combo (2026-09-01)
 
-- Antes, en la pantalla Stock, el switch "Controlar stock de este producto" solo aparecía para productos sin receta (Café/Té/Torta/Entrada). Los combos (Hamburguesa + bebida, etc.) no tenían forma de apagar el control.
-- Ahora el switch aparece para **todos** los productos. Para los combos flipea un flag nuevo `stockOff` (helper `tracksStock(p)`: receta -> `!stockOff`; sin receta -> `controlled`). Con el control apagado, ese combo **no descuenta de los pools**, no se limita por ellos, no muestra chip en Vender y no genera filas en MovimientosStock — la venta y la plata se registran igual.
-- En el panel expandido del combo, además del switch, se muestra un texto "Descuenta de: 2× Choripán + 1× Bebida…" (el stock se sigue editando en la sección "Stock del puesto", no por producto).
-- `applySaleStock`, `productRemaining`, el aviso de stock bajo (`vender.js`) y `stockRowsForSale_` (`sync.js`) ahora chequean `tracksStock(p)`.
-- Sin bump de `STATE_SCHEMA`: `stockOff` ausente en estados viejos = `undefined` = falsy = sigue controlando stock (comportamiento por defecto).
-- Verificado: combo con control apagado no toca los pools ni genera movimientos de stock, pero sí aparece en DetalleVentas; el switch en la pantalla Stock prende/apaga y el encabezado pasa a "Sin control".
+- El switch "Controlar stock" va sobre el **item base** de la sección "Stock del puesto" (Choripán, Hamburguesa, Hamburguesa veggie, Bebida) — no sobre los combos. El stock pertenece al producto base; los combos solo lo consumen vía su receta.
+- Cada pool tiene ahora `controlled` (por defecto `true`), apagable desde su fila en la pantalla Stock. Con el control apagado:
+  - los combos que usan ese pool **dejan de descontar de él y de limitarse por él** (pero siguen respetando los otros pools de su receta — ej. apagar "Hamburguesa" no afecta el límite por "Bebida" de "Hamburguesa + bebida");
+  - la fila del pool muestra "Sin control" y esconde los `−/+/+10`;
+  - no genera filas de ese item en MovimientosStock;
+  - queda fuera de "Stock inicial" en el seteo del puesto.
+- Los combos ("Productos") ya no tienen switch: solo precio editable + la línea "Usa 2× Choripán + 1× Bebida". Los productos sin receta (Café/Té/Torta/Entrada) mantienen su switch propio (`p.controlled`) como estaba.
+- `productRemaining` / `applySaleStock` / aviso de stock bajo (`vender.js`) y `stockRowsForSale_` (`sync.js`) filtran por `pool.controlled`. Se descartó el intento anterior (flag `stockOff` + helper `tracksStock` sobre el combo).
+- Sin bump de `STATE_SCHEMA`: `pool.controlled` ausente en estados viejos = `undefined`… ojo, los pools se crean con `controlled: true` desde la fábrica, así que los estados persistidos ya lo tienen; los combos que hubieran quedado con `stockOff` de la iteración descartada simplemente se ignoran.
 
 ## Pendientes / posibles próximos pasos
 
