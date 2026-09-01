@@ -197,6 +197,14 @@ Cambios de implementación:
 - `productRemaining` / `applySaleStock` / aviso de stock bajo (`vender.js`) y `stockRowsForSale_` (`sync.js`) filtran por `pool.controlled`. Se descartó el intento anterior (flag `stockOff` + helper `tracksStock` sobre el combo).
 - Sin bump de `STATE_SCHEMA`: `pool.controlled` ausente en estados viejos = `undefined`… ojo, los pools se crean con `controlled: true` desde la fábrica, así que los estados persistidos ya lo tienen; los combos que hubieran quedado con `stockOff` de la iteración descartada simplemente se ignoran.
 
+## Rifas como item único con stock (2026-09-01)
+
+- El puesto Rifas pasa del modelo de dos productos sueltos ("1 rifa", "3 rifas") al modelo pool/receta, igual que Buffet: un item base **"Rifa"** (stock inicial 1000) del que descuentan los dos botones de venta.
+- "1 rifa" ($4.000) tiene receta `{ rifa: 1 }`, "3 rifas" ($10.000) tiene `{ rifa: 3 }`. Vender "3 rifas" descuenta 3 del stock de Rifa; anular devuelve 3.
+- El control de stock (toggle, `−/+/+10`, "Stock inicial") vive sobre el item "Rifa" en la sección "Stock del puesto". Los dos botones solo muestran la línea "Usa 1× Rifa" / "Usa 3× Rifa".
+- MovimientosStock registra `venta · Rifa · -N`; DetalleVentas sigue con una fila por botón vendido.
+- `STATE_SCHEMA` a `5` (el puesto Rifas ahora tiene `pools` y sus productos tienen receta).
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.

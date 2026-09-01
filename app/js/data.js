@@ -80,9 +80,12 @@ var STANDS = {
   },
   rifas: {
     label: "Rifas", sub: "Números para el sorteo", icon: "🍀",
+    pools: [
+      pool("rifa", "🎟️", "Rifa", { stock: 1000, thresholds: { mucho: 500, medio: 200, poco: 50 } })
+    ],
     products: [
-      product("rifa1", "🎟️", "1 rifa", 4000),
-      product("rifa3", "🍀", "3 rifas", 10000)
+      product("rifa1", "🎟️", "1 rifa", 4000, { recipe: { rifa: 1 } }),
+      product("rifa3", "🍀", "3 rifas", 10000, { recipe: { rifa: 3 } })
     ]
   }
 };
