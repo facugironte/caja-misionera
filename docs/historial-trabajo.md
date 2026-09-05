@@ -213,6 +213,12 @@ Cambios de implementación:
 - **Cache-busting en `app/index.html`:** cada `<script>`/`<link>` local ahora lleva `?v=1`. Hasta ahora, después de cada deploy a GitHub Pages el navegador seguía sirviendo los `.js`/`.css` viejos desde caché y había que forzar un hard-refresh a mano. De acá en más, cada vez que se toque algo en `app/` hay que **bumpear ese número de versión** en `index.html` (los 14 tags) para que el navegador los trate como recursos nuevos. `standalone/index.html` no lo necesita (todo va inline en un solo archivo).
 - Verificado en el navegador: los 14 productos del Buffet renderizan sin romper el layout; una venta combinando dos combos cruzados + 2× pizzeta descuenta de los pools correctos (Choripán −2, Hamburguesa −1, Hamburguesa veggie −1, Bebida −4, Pizzeta −2) con las filas correspondientes en MovimientosStock; la pantalla Stock lista el pool Pizzeta. Sin errores de consola.
 
+## Tarjetas de producto simétricas en Vender (2026-09-01)
+
+- Con el catálogo de Buffet creciendo a 14 productos, algunos con nombres largos ("Choripán + hamburguesa veggie + bebida"), el grid quedaba disparejo: cada tarjeta ocupaba lo que su nombre necesitara (hasta 3 líneas) y las tarjetas cortas de la misma fila quedaban con un hueco vacío enorme abajo, estirado por CSS Grid.
+- Se corta el nombre a **2 líneas con puntos suspensivos** (`-webkit-line-clamp`) y se reserva esa altura aunque el texto sea más corto (`min-height: 2.4em` en `.tile-head .name`), así **todas** las tarjetas del grid quedan exactamente de la misma altura (verificado: 14/14 a 84px en desktop, 14/14 a 71px en mobile), sin importar cuántas líneas ocupe cada nombre. El nombre completo sigue estando en el DOM (accesibilidad, copiar/pegar) — el recorte es solo visual. Cada combo sigue siendo identificable aun truncado por su combinación de íconos (🌭🍔, 🌭🥬, 🍔🥬…) y el precio.
+- Se bumpeó la versión de cache-busting de `app/index.html` (`?v=1` -> `?v=2`).
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.
