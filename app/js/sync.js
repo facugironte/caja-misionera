@@ -99,7 +99,7 @@ function stockRowsForSale_(st, corteId, op, sign, tipo, motivo) {
       });
       var bpool = (st.pools || []).filter(function (x) { return x.id === cfg.bebidaPool; })[0];
       if (!(bpool && !bpool.controlled)) {
-        rows.push(Object.assign({}, base, { item: bpool ? bpool.name : cfg.bebidaPool, delta: sign * it.qty }));
+        rows.push(Object.assign({}, base, { item: bpool ? bpool.name : cfg.bebidaPool, delta: sign * it.qty * it.group.members.length }));
       }
       return;
     }

@@ -233,6 +233,13 @@ Reemplaza el catálogo de 9 combos fijos del Buffet (Choripán + bebida, 2 chori
 - `STATE_SCHEMA` a `7` (catálogo del Buffet cambió de raíz). Cache-busting a `?v=3`.
 - Verificado en el navegador: matriz de precios (1/2/3/4 principales), venta cruzada con `pool.controlled` apagado en un ingrediente, anulación devolviendo stock y marcando `anulada`, "Stock" mostrando el hint de precio en vez de "$0", otros puestos (Tickets) sin regressions. Sin errores de consola.
 
+### Corrección: 2 bebidas por par, no 1 (mismo día)
+
+La primera versión descontaba **1 sola bebida por cada par** (ej. "2 choripán" -> 1 bebida) — mal: cada unidad de principal trae su propia bebida, así que un par son **2 bebidas**, no una compartida. Corregido:
+- `pairGroupName`: pares dicen "... + 2 bebidas" (ej. "2 choripán + 2 bebidas", "Choripán + hamburguesa + 2 bebidas"); un individual sigue diciendo "... + bebida" (1 sola).
+- Descuento de stock: `applyGroupStock` (vender.js) y `stockRowsForSale_` (sync.js) multiplican por `members.length` (1 o 2), no por una bebida fija. El **precio no cambia** ($18.000 el par / $10.000 el individual) — solo la cantidad de bebida que se descuenta y cómo se llama el combo.
+- Verificado: 2 hamburguesa + 1 choripán + 1 veggie (4 principales) ahora descuenta Bebida −4 (antes −2); 2 choripán + 1 hamburguesa (3 principales) descuenta Bebida −3 (2 del par + 1 del individual). Cache-busting a `?v=4`.
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.

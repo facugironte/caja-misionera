@@ -64,14 +64,16 @@ function allPairGroups() {
 
 function lowerFirst(s) { return s.charAt(0).toLowerCase() + s.slice(1); }
 
+// Cada unidad de "principal" trae su propia bebida (1 sola -> 1 bebida, un par -> 2 bebidas).
 function pairGroupName(st, g) {
   var names = g.members.map(function (id) {
     var p = st.products.filter(function (x) { return x.id === id; })[0];
     return p ? p.name : id;
   });
-  if (names.length === 1) return names[0] + " + bebida";
-  if (names[0] === names[1]) return "2 " + lowerFirst(names[0]) + " + bebida";
-  return names[0] + " + " + lowerFirst(names[1]) + " + bebida";
+  var bebidas = g.members.length > 1 ? g.members.length + " bebidas" : "bebida";
+  if (names.length === 1) return names[0] + " + " + bebidas;
+  if (names[0] === names[1]) return "2 " + lowerFirst(names[0]) + " + " + bebidas;
+  return names[0] + " + " + lowerFirst(names[1]) + " + " + bebidas;
 }
 
 function pairGroupIcon(st, g) {
@@ -301,7 +303,7 @@ function applyGroupStock(st, it, sign) {
   });
   var bpool = poolById(st, cfg.bebidaPool);
   if (bpool && bpool.controlled) {
-    bpool.stock = Math.max(0, bpool.stock - sign * it.qty);
+    bpool.stock = Math.max(0, bpool.stock - sign * it.qty * it.group.members.length);
     bpool.level = levelFor(bpool.stock, bpool.thresholds);
   }
 }
