@@ -205,6 +205,14 @@ Cambios de implementación:
 - MovimientosStock registra `venta · Rifa · -N`; DetalleVentas sigue con una fila por botón vendido.
 - `STATE_SCHEMA` a `5` (el puesto Rifas ahora tiene `pools` y sus productos tienen receta).
 
+## Combos combinables (chori/hamburguesa/veggie) + combo Bebida+pizzeta, cache-busting (2026-09-01)
+
+- **Combos de "2 principales" combinables.** Antes solo existían los dobles del mismo tipo (2 choripán, 2 hamburguesa, 2 veggie). Se agregaron los 3 cruces que faltaban para cubrir cualquier combinación de a 2 entre Choripán / Hamburguesa / Hamburguesa veggie, todos + bebida a $18.000: "Choripán + hamburguesa + bebida", "Choripán + hamburguesa veggie + bebida", "Hamburguesa + hamburguesa veggie + bebida". Quedan 9 combos de comida en total (3 simples a $10.000 + 6 dobles a $18.000), cada uno con receta contra los pools correspondientes — nada nuevo en el modelo, solo más combinaciones de las mismas recetas.
+- **Combo "Bebida + pizzeta (menores de 7)"** — $6.000 (precio a confirmar, no estaba especificado). Nuevo pool **Pizzeta** (stock inicial 60), independiente del resto.
+- `STATE_SCHEMA` a `6` (catálogo del Buffet cambió: pool y productos nuevos).
+- **Cache-busting en `app/index.html`:** cada `<script>`/`<link>` local ahora lleva `?v=1`. Hasta ahora, después de cada deploy a GitHub Pages el navegador seguía sirviendo los `.js`/`.css` viejos desde caché y había que forzar un hard-refresh a mano. De acá en más, cada vez que se toque algo en `app/` hay que **bumpear ese número de versión** en `index.html` (los 14 tags) para que el navegador los trate como recursos nuevos. `standalone/index.html` no lo necesita (todo va inline en un solo archivo).
+- Verificado en el navegador: los 14 productos del Buffet renderizan sin romper el layout; una venta combinando dos combos cruzados + 2× pizzeta descuenta de los pools correctos (Choripán −2, Hamburguesa −1, Hamburguesa veggie −1, Bebida −4, Pizzeta −2) con las filas correspondientes en MovimientosStock; la pantalla Stock lista el pool Pizzeta. Sin errores de consola.
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.

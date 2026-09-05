@@ -49,16 +49,21 @@ var STANDS = {
       pool("chori", "🌭", "Choripán", { stock: 150, thresholds: { mucho: 100, medio: 50, poco: 20 } }),
       pool("hamb", "🍔", "Hamburguesa", { stock: 150, thresholds: { mucho: 100, medio: 50, poco: 20 } }),
       pool("hambveg", "🥬", "Hamburguesa veggie", { stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } }),
-      pool("bebida", "🥤", "Bebida", { stock: 200, thresholds: { mucho: 140, medio: 70, poco: 25 } })
+      pool("bebida", "🥤", "Bebida", { stock: 200, thresholds: { mucho: 140, medio: 70, poco: 25 } }),
+      pool("pizzeta", "🍕", "Pizzeta", { stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } })
     ],
     products: [
       product("chori_beb", "🌭", "Choripán + bebida", 10000, { recipe: { chori: 1, bebida: 1 } }),
-      product("chori2_beb", "🌭", "2 choripán + bebida", 18000, { recipe: { chori: 2, bebida: 1 } }),
       product("hamb_beb", "🍔", "Hamburguesa + bebida", 10000, { recipe: { hamb: 1, bebida: 1 } }),
-      product("hamb2_beb", "🍔", "2 hamburguesa + bebida", 18000, { recipe: { hamb: 2, bebida: 1 } }),
       product("hambveg_beb", "🥬", "Hamburguesa veggie + bebida", 10000, { recipe: { hambveg: 1, bebida: 1 } }),
+      product("chori2_beb", "🌭", "2 choripán + bebida", 18000, { recipe: { chori: 2, bebida: 1 } }),
+      product("hamb2_beb", "🍔", "2 hamburguesa + bebida", 18000, { recipe: { hamb: 2, bebida: 1 } }),
       product("hambveg2_beb", "🥬", "2 hamburguesa veggie + bebida", 18000, { recipe: { hambveg: 2, bebida: 1 } }),
+      product("chori_hamb_beb", "🌭🍔", "Choripán + hamburguesa + bebida", 18000, { recipe: { chori: 1, hamb: 1, bebida: 1 } }),
+      product("chori_hambveg_beb", "🌭🥬", "Choripán + hamburguesa veggie + bebida", 18000, { recipe: { chori: 1, hambveg: 1, bebida: 1 } }),
+      product("hamb_hambveg_beb", "🍔🥬", "Hamburguesa + hamburguesa veggie + bebida", 18000, { recipe: { hamb: 1, hambveg: 1, bebida: 1 } }),
       product("bebida", "🥤", "Bebida", 1000, { recipe: { bebida: 1 } }),
+      product("pizzeta_beb", "🍕", "Bebida + pizzeta (menores de 7)", 6000, { recipe: { pizzeta: 1, bebida: 1 } }),
       product("cafe", "☕", "Café", 1000, { controlled: true, stock: 100, thresholds: { mucho: 60, medio: 30, poco: 10 } }),
       product("te", "🍵", "Té", 1000, { controlled: true, stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } }),
       product("torta", "🍰", "Torta", 3000, { controlled: true, stock: 40, thresholds: { mucho: 30, medio: 15, poco: 5 } })
