@@ -86,6 +86,23 @@ function stockRowsForSale_(st, corteId, op, sign, tipo, motivo) {
     venta_id: (op.id || op.ventaId || ""), stock_resultante: ""
   };
   op.items.forEach(function (it) {
+    if (it.group) {
+      var cfg = PAIR_GROUPS[it.group.key];
+      it.group.members.forEach(function (productId) {
+        var mp = (st.products || []).filter(function (x) { return x.id === productId; })[0];
+        if (!mp || !mp.recipe) return;
+        Object.keys(mp.recipe).forEach(function (poolId) {
+          var mpool = (st.pools || []).filter(function (x) { return x.id === poolId; })[0];
+          if (mpool && !mpool.controlled) return;
+          rows.push(Object.assign({}, base, { item: mpool ? mpool.name : poolId, delta: sign * mp.recipe[poolId] * it.qty }));
+        });
+      });
+      var bpool = (st.pools || []).filter(function (x) { return x.id === cfg.bebidaPool; })[0];
+      if (!(bpool && !bpool.controlled)) {
+        rows.push(Object.assign({}, base, { item: bpool ? bpool.name : cfg.bebidaPool, delta: sign * it.qty }));
+      }
+      return;
+    }
     var p = (st.products || []).filter(function (x) { return x.id === it.productId; })[0];
     if (!p) return;
     if (p.recipe) {

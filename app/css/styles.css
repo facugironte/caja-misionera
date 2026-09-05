@@ -173,11 +173,12 @@
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden; text-overflow: ellipsis; min-height: 2.4em;
   }
-  .tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+  .tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; min-height: 28px; }
   .tile-foot .price {
     font-family: var(--font-display); font-weight: 600; font-size: 15px;
     color: var(--stand-accent); font-variant-numeric: tabular-nums;
   }
+  .tile-foot .price.price-hint { font-family: var(--font-body); font-size: 10.5px; font-weight: 600; line-height: 1.3; }
   .stock-chip {
     flex: none; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums;
     padding: 2px 8px; border-radius: 999px; line-height: 1.5;
@@ -221,6 +222,8 @@
   .cart-line .name { flex: 1; font-weight: 600; font-size: 13.5px; }
   .cart-line .sub { font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
   .cart-line .stepper { display: flex; align-items: center; gap: 6px; }
+  .cart-line-readonly { background: var(--surface-sunken); }
+  .cart-line-readonly .sub { color: var(--stand-accent); font-weight: 600; }
   .qty-btn {
     border: 1px solid var(--border); background: var(--surface-sunken); color: var(--text);
     width: 40px; height: 40px; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; flex: none;
@@ -319,7 +322,7 @@
   .set-row .name { font-weight: 600; font-size: 14px; flex: 1; }
   .set-row .name-stock { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; flex: 1; min-width: 0; padding-top: 2px; }
   .set-row .price-display, .set-row .expand-chev { margin-top: 2px; }
-  .set-row .name-stock .name { flex: none; }
+  .set-row .name-stock .name { flex: 1 1 100%; min-width: 0; }
   .set-row .price-display {
     font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--stand-accent);
     font-variant-numeric: tabular-nums; flex: none;

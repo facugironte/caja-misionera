@@ -29,11 +29,18 @@ function pool(id, icon, name, opts) {
 // si tiene recipe, el stock sale de los pools. `controlled` es el modo de stock propio
 // (productos sin receta, ej. Café/Té/Torta). El control de stock de un combo se maneja
 // en cada pool que usa (pool.controlled), no en el combo.
+// `pairGroup` (opcional): id de un grupo en PAIR_GROUPS. Un producto con pairGroup no
+// tiene precio propio (price: null) — su precio depende de cuántas unidades de ESE
+// grupo (entre todos sus productos) haya en el carrito: se cobran de a pares al precio
+// de PAIR_GROUPS[x].pairPrice (con la bebida de PAIR_GROUPS[x].bebidaPool incluida) y,
+// si sobra una unidad suelta, esa se cobra a PAIR_GROUPS[x].singlePrice. Ver vender.js
+// (buildPairGroups) para el armado de los pares/individual.
 function product(id, icon, name, price, opts) {
   opts = opts || {};
   return {
-    id: id, icon: icon, name: name, price: price,
+    id: id, icon: icon, name: name, price: opts.pairGroup ? null : price,
     recipe: opts.recipe || null,
+    pairGroup: opts.pairGroup || null,
     controlled: !!opts.controlled,
     stock: opts.stock || 0,
     thresholds: opts.thresholds || { mucho: 100, medio: 40, poco: 10 },
@@ -41,6 +48,14 @@ function product(id, icon, name, price, opts) {
     sold: 0
   };
 }
+
+// Reglas de precio "por pares" — ver comentario de `product()`.
+var PAIR_GROUPS = {
+  principales: {
+    pairPrice: 18000, singlePrice: 10000, bebidaPool: "bebida",
+    hint: "$10.000 · $18.000 el par"
+  }
+};
 
 var STANDS = {
   buffet: {
@@ -53,17 +68,11 @@ var STANDS = {
       pool("pizzeta", "🍕", "Pizzeta", { stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } })
     ],
     products: [
-      product("chori_beb", "🌭", "Choripán + bebida", 10000, { recipe: { chori: 1, bebida: 1 } }),
-      product("hamb_beb", "🍔", "Hamburguesa + bebida", 10000, { recipe: { hamb: 1, bebida: 1 } }),
-      product("hambveg_beb", "🥬", "Hamburguesa veggie + bebida", 10000, { recipe: { hambveg: 1, bebida: 1 } }),
-      product("chori2_beb", "🌭", "2 choripán + bebida", 18000, { recipe: { chori: 2, bebida: 1 } }),
-      product("hamb2_beb", "🍔", "2 hamburguesa + bebida", 18000, { recipe: { hamb: 2, bebida: 1 } }),
-      product("hambveg2_beb", "🥬", "2 hamburguesa veggie + bebida", 18000, { recipe: { hambveg: 2, bebida: 1 } }),
-      product("chori_hamb_beb", "🌭🍔", "Choripán + hamburguesa + bebida", 18000, { recipe: { chori: 1, hamb: 1, bebida: 1 } }),
-      product("chori_hambveg_beb", "🌭🥬", "Choripán + hamburguesa veggie + bebida", 18000, { recipe: { chori: 1, hambveg: 1, bebida: 1 } }),
-      product("hamb_hambveg_beb", "🍔🥬", "Hamburguesa + hamburguesa veggie + bebida", 18000, { recipe: { hamb: 1, hambveg: 1, bebida: 1 } }),
+      product("chori_main", "🌭", "Choripán", null, { recipe: { chori: 1 }, pairGroup: "principales" }),
+      product("hamb_main", "🍔", "Hamburguesa", null, { recipe: { hamb: 1 }, pairGroup: "principales" }),
+      product("hambveg_main", "🥬", "Hamburguesa veggie", null, { recipe: { hambveg: 1 }, pairGroup: "principales" }),
       product("bebida", "🥤", "Bebida", 1000, { recipe: { bebida: 1 } }),
-      product("pizzeta_beb", "🍕", "Bebida + pizzeta (menores de 7)", 6000, { recipe: { pizzeta: 1, bebida: 1 } }),
+      product("pizzeta_beb", "🍕", "Pizzeta + bebida (menores de 7)", 6000, { recipe: { pizzeta: 1, bebida: 1 } }),
       product("cafe", "☕", "Café", 1000, { controlled: true, stock: 100, thresholds: { mucho: 60, medio: 30, poco: 10 } }),
       product("te", "🍵", "Té", 1000, { controlled: true, stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } }),
       product("torta", "🍰", "Torta", 3000, { controlled: true, stock: 40, thresholds: { mucho: 30, medio: 15, poco: 5 } })

@@ -3,7 +3,7 @@
 // Subir cuando cambia la forma del estado persistido de forma incompatible
 // (ej. catálogo de productos / pools de stock). Estados guardados con otro
 // número se descartan y se arranca de cero.
-var STATE_SCHEMA = 6;
+var STATE_SCHEMA = 7;
 
 function freshStandState(key) {
   return {

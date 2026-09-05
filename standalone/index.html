@@ -184,11 +184,12 @@
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden; text-overflow: ellipsis; min-height: 2.4em;
   }
-  .tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+  .tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; min-height: 28px; }
   .tile-foot .price {
     font-family: var(--font-display); font-weight: 600; font-size: 15px;
     color: var(--stand-accent); font-variant-numeric: tabular-nums;
   }
+  .tile-foot .price.price-hint { font-family: var(--font-body); font-size: 10.5px; font-weight: 600; line-height: 1.3; }
   .stock-chip {
     flex: none; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums;
     padding: 2px 8px; border-radius: 999px; line-height: 1.5;
@@ -232,6 +233,8 @@
   .cart-line .name { flex: 1; font-weight: 600; font-size: 13.5px; }
   .cart-line .sub { font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
   .cart-line .stepper { display: flex; align-items: center; gap: 6px; }
+  .cart-line-readonly { background: var(--surface-sunken); }
+  .cart-line-readonly .sub { color: var(--stand-accent); font-weight: 600; }
   .qty-btn {
     border: 1px solid var(--border); background: var(--surface-sunken); color: var(--text);
     width: 40px; height: 40px; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; flex: none;
@@ -330,7 +333,7 @@
   .set-row .name { font-weight: 600; font-size: 14px; flex: 1; }
   .set-row .name-stock { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; flex: 1; min-width: 0; padding-top: 2px; }
   .set-row .price-display, .set-row .expand-chev { margin-top: 2px; }
-  .set-row .name-stock .name { flex: none; }
+  .set-row .name-stock .name { flex: 1 1 100%; min-width: 0; }
   .set-row .price-display {
     font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--stand-accent);
     font-variant-numeric: tabular-nums; flex: none;
@@ -463,11 +466,18 @@ function pool(id, icon, name, opts) {
 // si tiene recipe, el stock sale de los pools. `controlled` es el modo de stock propio
 // (productos sin receta, ej. Café/Té/Torta). El control de stock de un combo se maneja
 // en cada pool que usa (pool.controlled), no en el combo.
+// `pairGroup` (opcional): id de un grupo en PAIR_GROUPS. Un producto con pairGroup no
+// tiene precio propio (price: null) — su precio depende de cuántas unidades de ESE
+// grupo (entre todos sus productos) haya en el carrito: se cobran de a pares al precio
+// de PAIR_GROUPS[x].pairPrice (con la bebida de PAIR_GROUPS[x].bebidaPool incluida) y,
+// si sobra una unidad suelta, esa se cobra a PAIR_GROUPS[x].singlePrice. Ver vender.js
+// (buildPairGroups) para el armado de los pares/individual.
 function product(id, icon, name, price, opts) {
   opts = opts || {};
   return {
-    id: id, icon: icon, name: name, price: price,
+    id: id, icon: icon, name: name, price: opts.pairGroup ? null : price,
     recipe: opts.recipe || null,
+    pairGroup: opts.pairGroup || null,
     controlled: !!opts.controlled,
     stock: opts.stock || 0,
     thresholds: opts.thresholds || { mucho: 100, medio: 40, poco: 10 },
@@ -475,6 +485,14 @@ function product(id, icon, name, price, opts) {
     sold: 0
   };
 }
+
+// Reglas de precio "por pares" — ver comentario de `product()`.
+var PAIR_GROUPS = {
+  principales: {
+    pairPrice: 18000, singlePrice: 10000, bebidaPool: "bebida",
+    hint: "$10.000 · $18.000 el par"
+  }
+};
 
 var STANDS = {
   buffet: {
@@ -487,17 +505,11 @@ var STANDS = {
       pool("pizzeta", "🍕", "Pizzeta", { stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } })
     ],
     products: [
-      product("chori_beb", "🌭", "Choripán + bebida", 10000, { recipe: { chori: 1, bebida: 1 } }),
-      product("hamb_beb", "🍔", "Hamburguesa + bebida", 10000, { recipe: { hamb: 1, bebida: 1 } }),
-      product("hambveg_beb", "🥬", "Hamburguesa veggie + bebida", 10000, { recipe: { hambveg: 1, bebida: 1 } }),
-      product("chori2_beb", "🌭", "2 choripán + bebida", 18000, { recipe: { chori: 2, bebida: 1 } }),
-      product("hamb2_beb", "🍔", "2 hamburguesa + bebida", 18000, { recipe: { hamb: 2, bebida: 1 } }),
-      product("hambveg2_beb", "🥬", "2 hamburguesa veggie + bebida", 18000, { recipe: { hambveg: 2, bebida: 1 } }),
-      product("chori_hamb_beb", "🌭🍔", "Choripán + hamburguesa + bebida", 18000, { recipe: { chori: 1, hamb: 1, bebida: 1 } }),
-      product("chori_hambveg_beb", "🌭🥬", "Choripán + hamburguesa veggie + bebida", 18000, { recipe: { chori: 1, hambveg: 1, bebida: 1 } }),
-      product("hamb_hambveg_beb", "🍔🥬", "Hamburguesa + hamburguesa veggie + bebida", 18000, { recipe: { hamb: 1, hambveg: 1, bebida: 1 } }),
+      product("chori_main", "🌭", "Choripán", null, { recipe: { chori: 1 }, pairGroup: "principales" }),
+      product("hamb_main", "🍔", "Hamburguesa", null, { recipe: { hamb: 1 }, pairGroup: "principales" }),
+      product("hambveg_main", "🥬", "Hamburguesa veggie", null, { recipe: { hambveg: 1 }, pairGroup: "principales" }),
       product("bebida", "🥤", "Bebida", 1000, { recipe: { bebida: 1 } }),
-      product("pizzeta_beb", "🍕", "Bebida + pizzeta (menores de 7)", 6000, { recipe: { pizzeta: 1, bebida: 1 } }),
+      product("pizzeta_beb", "🍕", "Pizzeta + bebida (menores de 7)", 6000, { recipe: { pizzeta: 1, bebida: 1 } }),
       product("cafe", "☕", "Café", 1000, { controlled: true, stock: 100, thresholds: { mucho: 60, medio: 30, poco: 10 } }),
       product("te", "🍵", "Té", 1000, { controlled: true, stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } }),
       product("torta", "🍰", "Torta", 3000, { controlled: true, stock: 40, thresholds: { mucho: 30, medio: 15, poco: 5 } })
@@ -556,7 +568,7 @@ function payMethodsFor(standKey) {
 // Subir cuando cambia la forma del estado persistido de forma incompatible
 // (ej. catálogo de productos / pools de stock). Estados guardados con otro
 // número se descartan y se arranca de cero.
-var STATE_SCHEMA = 6;
+var STATE_SCHEMA = 7;
 
 function freshStandState(key) {
   return {
@@ -705,6 +717,23 @@ function stockRowsForSale_(st, corteId, op, sign, tipo, motivo) {
     venta_id: (op.id || op.ventaId || ""), stock_resultante: ""
   };
   op.items.forEach(function (it) {
+    if (it.group) {
+      var cfg = PAIR_GROUPS[it.group.key];
+      it.group.members.forEach(function (productId) {
+        var mp = (st.products || []).filter(function (x) { return x.id === productId; })[0];
+        if (!mp || !mp.recipe) return;
+        Object.keys(mp.recipe).forEach(function (poolId) {
+          var mpool = (st.pools || []).filter(function (x) { return x.id === poolId; })[0];
+          if (mpool && !mpool.controlled) return;
+          rows.push(Object.assign({}, base, { item: mpool ? mpool.name : poolId, delta: sign * mp.recipe[poolId] * it.qty }));
+        });
+      });
+      var bpool = (st.pools || []).filter(function (x) { return x.id === cfg.bebidaPool; })[0];
+      if (!(bpool && !bpool.controlled)) {
+        rows.push(Object.assign({}, base, { item: bpool ? bpool.name : cfg.bebidaPool, delta: sign * it.qty }));
+      }
+      return;
+    }
     var p = (st.products || []).filter(function (x) { return x.id === it.productId; })[0];
     if (!p) return;
     if (p.recipe) {
@@ -1039,14 +1068,84 @@ function cartLines() {
   var st = state[nav.stand];
   return nav.cart.map(function (l) {
     var p = st.products.filter(function (x) { return x.id === l.productId; })[0];
-    return { product: p, qty: l.qty, subtotal: p.price * l.qty };
+    return { product: p, qty: l.qty, subtotal: p.price != null ? p.price * l.qty : null };
   });
 }
-function cartTotal() { return cartLines().reduce(function (sum, l) { return sum + l.subtotal; }, 0); }
 function cartCount() { return nav.cart.reduce(function (sum, l) { return sum + l.qty; }, 0); }
 
 function poolById(st, id) {
   return (st.pools || []).filter(function (x) { return x.id === id; })[0];
+}
+
+// --- Precio "por pares" (PAIR_GROUPS, ver data.js) ---------------------------------
+// Productos como Choripán/Hamburguesa/Hamburguesa veggie no tienen precio propio:
+// se arman de a pares (con las unidades que haya en el carrito, mezclando tipos
+// libremente) al precio del par; si queda una unidad suelta, esa se cobra aparte.
+// Cada par o individual "incluye" una bebida (se descuenta del pool de esa bebida
+// al cerrar la venta, sin cobrarla aparte).
+
+function pairGroupProducts(groupKey) {
+  var st = state[nav.stand];
+  return st.products.filter(function (p) { return p.pairGroup === groupKey; });
+}
+
+// Arma los pares + individual sobrante de un grupo a partir de las cantidades del
+// carrito. Devuelve un array de { key, members:[productId,...], price, qty } —
+// "qty" es cuántas veces se repite exactamente esa combinación (ej. 2 pares
+// "Choripán + Choripán" -> un solo item con qty:2).
+function buildPairGroups(groupKey) {
+  var cfg = PAIR_GROUPS[groupKey];
+  var flat = [];
+  pairGroupProducts(groupKey).forEach(function (p) {
+    var qty = cartQty(p.id);
+    for (var i = 0; i < qty; i++) flat.push(p.id);
+  });
+  var sigMap = {};
+  var order = [];
+  for (var i = 0; i < flat.length; i += 2) {
+    var members = (i + 1 < flat.length) ? [flat[i], flat[i + 1]] : [flat[i]];
+    var isPair = members.length === 2;
+    var sig = members.slice().sort().join("+");
+    if (!sigMap[sig]) {
+      sigMap[sig] = { key: groupKey, members: members, price: isPair ? cfg.pairPrice : cfg.singlePrice, qty: 0 };
+      order.push(sig);
+    }
+    sigMap[sig].qty += 1;
+  }
+  return order.map(function (sig) { return sigMap[sig]; });
+}
+
+// Todos los grupos de todos los pairGroups configurados, ya armados desde el carrito.
+function allPairGroups() {
+  var out = [];
+  Object.keys(PAIR_GROUPS).forEach(function (key) { out = out.concat(buildPairGroups(key)); });
+  return out;
+}
+
+function lowerFirst(s) { return s.charAt(0).toLowerCase() + s.slice(1); }
+
+function pairGroupName(st, g) {
+  var names = g.members.map(function (id) {
+    var p = st.products.filter(function (x) { return x.id === id; })[0];
+    return p ? p.name : id;
+  });
+  if (names.length === 1) return names[0] + " + bebida";
+  if (names[0] === names[1]) return "2 " + lowerFirst(names[0]) + " + bebida";
+  return names[0] + " + " + lowerFirst(names[1]) + " + bebida";
+}
+
+function pairGroupIcon(st, g) {
+  var icons = g.members.map(function (id) {
+    var p = st.products.filter(function (x) { return x.id === id; })[0];
+    return p ? p.icon : "";
+  });
+  return icons[0] === icons[1] ? icons[0] : icons.join("");
+}
+
+function cartTotal() {
+  var base = cartLines().reduce(function (sum, l) { return sum + (l.subtotal || 0); }, 0);
+  var groups = allPairGroups().reduce(function (sum, g) { return sum + g.qty * g.price; }, 0);
+  return base + groups;
 }
 
 // Unidades de un pool ya comprometidas por lo que hay en el carrito.
@@ -1125,12 +1224,13 @@ function renderVenderGrid() {
     btn.type = "button";
     btn.dataset.id = p.id;
     if (disabled) btn.setAttribute("disabled", "disabled");
+    var priceHtml = p.price != null ? money(p.price) : PAIR_GROUPS[p.pairGroup].hint;
     btn.innerHTML =
       '<div class="tile-head"><span class="icon">' + p.icon + '</span>' +
       '<span class="name">' + p.name + "</span>" +
       (qty > 0 ? '<span class="cart-badge">' + qty + "</span>" : "") +
       "</div>" +
-      '<div class="tile-foot"><span class="price">' + money(p.price) + "</span>" +
+      '<div class="tile-foot"><span class="price' + (p.price == null ? " price-hint" : "") + '">' + priceHtml + "</span>" +
       productStockLine(st, p) + "</div>";
     btn.addEventListener("click", function () { addToCart(p.id); });
     wrap.appendChild(btn);
@@ -1161,18 +1261,30 @@ function decLine(productId) {
 function renderVenderCart() {
   var wrap = document.getElementById("cartSection");
   if (!wrap) return;
+  var st = state[nav.stand];
   var lines = cartLines();
+  var groups = allPairGroups();
   if (!lines.length) { wrap.innerHTML = ""; return; }
 
   var html = '<div class="eyebrow">Carrito</div><div class="cart-list">';
   lines.forEach(function (l) {
     html += '<div class="cart-line"><span class="icon">' + l.product.icon + '</span><span class="name">' + l.product.name + '</span>' +
-      '<span class="sub">' + money(l.subtotal) + '</span>' +
+      '<span class="sub">' + (l.subtotal != null ? money(l.subtotal) : "") + '</span>' +
       '<span class="stepper"><button class="qty-btn" data-dec="' + l.product.id + '">–</button>' +
       '<span class="stock-num">' + l.qty + '</span>' +
       '<button class="qty-btn" data-inc="' + l.product.id + '">+</button></span></div>';
   });
   html += "</div>";
+
+  if (groups.length) {
+    html += '<div class="eyebrow">Combo principales (bebida incluida)</div><div class="cart-list">';
+    groups.forEach(function (g) {
+      html += '<div class="cart-line cart-line-readonly"><span class="icon">' + pairGroupIcon(st, g) + '</span>' +
+        '<span class="name">' + pairGroupName(st, g) + (g.qty > 1 ? " ×" + g.qty : "") + '</span>' +
+        '<span class="sub">' + money(g.qty * g.price) + "</span></div>";
+    });
+    html += "</div>";
+  }
 
   html += '<div class="eyebrow">Método de pago</div><div class="pay-row" id="payRow">';
   payMethodsFor(nav.stand).forEach(function (m) {
@@ -1202,9 +1314,11 @@ function renderVenderCart() {
   var goBtn = document.getElementById("btnVender");
   if (goBtn) goBtn.addEventListener("click", function () {
     if (!cartLines().length || !nav.payMethod) return;
-    var resumen = cartLines().map(function (l) {
+    var resumen = lines.filter(function (l) { return !l.product.pairGroup; }).map(function (l) {
       return l.product.name + (l.qty > 1 ? " ×" + l.qty : "");
-    }).join(", ");
+    }).concat(groups.map(function (g) {
+      return pairGroupName(st, g) + (g.qty > 1 ? " ×" + g.qty : "");
+    })).join(", ");
     var msg = "¿Confirmás la venta?\n\n" + resumen +
       "\nTotal: " + money(cartTotal()) +
       "\nPago: " + payLabel(nav.payMethod);
@@ -1213,7 +1327,10 @@ function renderVenderCart() {
   });
 }
 
+// Descuenta (sign=1) o devuelve (sign=-1) el stock de un item de venta normal
+// (con productId propio) o de un combo por pares (it.group).
 function applySaleStock(st, it, sign) {
+  if (it.group) { applyGroupStock(st, it, sign); return; }
   var p = st.products.filter(function (x) { return x.id === it.productId; })[0];
   if (!p) return;
   p.sold += sign * it.qty;
@@ -1230,13 +1347,35 @@ function applySaleStock(st, it, sign) {
   }
 }
 
+function applyGroupStock(st, it, sign) {
+  var cfg = PAIR_GROUPS[it.group.key];
+  it.group.members.forEach(function (productId) {
+    var p = st.products.filter(function (x) { return x.id === productId; })[0];
+    if (!p || !p.recipe) return;
+    Object.keys(p.recipe).forEach(function (poolId) {
+      var pool = poolById(st, poolId);
+      if (!pool || !pool.controlled) return;
+      pool.stock = Math.max(0, pool.stock - sign * p.recipe[poolId] * it.qty);
+      pool.level = levelFor(pool.stock, pool.thresholds);
+    });
+  });
+  var bpool = poolById(st, cfg.bebidaPool);
+  if (bpool && bpool.controlled) {
+    bpool.stock = Math.max(0, bpool.stock - sign * it.qty);
+    bpool.level = levelFor(bpool.stock, bpool.thresholds);
+  }
+}
+
 function finalizeSale(payMethodId) {
   var st = state[nav.stand];
-  var lines = cartLines();
-  if (!lines.length) return;
-  var items = lines.map(function (l) {
+  var normalItems = cartLines().filter(function (l) { return !l.product.pairGroup; }).map(function (l) {
     return { productId: l.product.id, name: l.product.name, qty: l.qty, price: l.product.price };
   });
+  var groupItems = allPairGroups().map(function (g) {
+    return { productId: null, name: pairGroupName(st, g), qty: g.qty, price: g.price, group: { key: g.key, members: g.members } };
+  });
+  var items = normalItems.concat(groupItems);
+  if (!items.length) return;
   var total = cartTotal();
   items.forEach(function (it) { applySaleStock(st, it, 1); });
   st.totals.ventas += 1; st.totals[payMethodId] += total;
@@ -1244,17 +1383,23 @@ function finalizeSale(payMethodId) {
   st.log.push({ id: makeId("v"), time: nowLabel(), type: "venta", items: items, total: total, payMethod: payMethodId, voided: false });
 
   var low = [];
+  function noteIfLow(pool) {
+    if (pool && pool.controlled && (pool.level === "critico" || pool.level === "agotado") && low.indexOf(pool.name) < 0) low.push(pool.name);
+  }
   items.forEach(function (it) {
+    if (it.group) {
+      var cfg = PAIR_GROUPS[it.group.key];
+      it.group.members.forEach(function (productId) {
+        var p = st.products.filter(function (x) { return x.id === productId; })[0];
+        if (p && p.recipe) Object.keys(p.recipe).forEach(function (poolId) { noteIfLow(poolById(st, poolId)); });
+      });
+      noteIfLow(poolById(st, cfg.bebidaPool));
+      return;
+    }
     var p = st.products.filter(function (x) { return x.id === it.productId; })[0];
     if (!p) return;
-    if (p.recipe) {
-      Object.keys(p.recipe).forEach(function (poolId) {
-        var pool = poolById(st, poolId);
-        if (pool && pool.controlled && (pool.level === "critico" || pool.level === "agotado") && low.indexOf(pool.name) < 0) low.push(pool.name);
-      });
-    } else if (p.controlled && (p.level === "critico" || p.level === "agotado")) {
-      if (low.indexOf(p.name) < 0) low.push(p.name);
-    }
+    if (p.recipe) Object.keys(p.recipe).forEach(function (poolId) { noteIfLow(poolById(st, poolId)); });
+    else if (p.controlled && (p.level === "critico" || p.level === "agotado") && low.indexOf(p.name) < 0) low.push(p.name);
   });
 
   nav.cart = [];
@@ -1591,13 +1736,19 @@ function renderSeteoStock() {
       '<span class="icon">' + p.icon + '</span>' +
       '<div class="name-stock"><span class="name">' + p.name + '</span>' +
       (p.recipe ? recipeLine(st, p) : stockLine(p)) + "</div>" +
-      '<span class="price-display">' + money(p.price) + '</span>' +
+      '<span class="price-display">' + (p.pairGroup ? PAIR_GROUPS[p.pairGroup].hint : money(p.price)) + '</span>' +
       '<span class="expand-chev">' + (expanded ? "▲" : "▾") + '</span>' +
       "</div>";
     if (expanded) {
       html += '<div class="stock-edit">';
-      html += '<div class="mini-toggle"><span class="lbl">Precio</span>' +
-        '<span class="price-field">$<input type="number" min="0" step="100" value="' + p.price + '" data-price="' + p.id + '"></span></div>';
+      if (p.pairGroup) {
+        var pg = PAIR_GROUPS[p.pairGroup];
+        html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.4;">Se cobra por pares junto con los demás productos de su mismo grupo: ' +
+          money(pg.singlePrice) + ' si queda uno suelto, ' + money(pg.pairPrice) + ' el par (bebida incluida). No tiene precio propio editable.</div>';
+      } else {
+        html += '<div class="mini-toggle"><span class="lbl">Precio</span>' +
+          '<span class="price-field">$<input type="number" min="0" step="100" value="' + p.price + '" data-price="' + p.id + '"></span></div>';
+      }
       if (!p.recipe) {
         html += '<div class="mini-toggle" style="margin-top:10px;"><span class="lbl">Controlar stock de este producto</span>' +
           '<button class="switch" data-prod-switch="' + p.id + '" data-on="' + p.controlled + '"></button></div>';

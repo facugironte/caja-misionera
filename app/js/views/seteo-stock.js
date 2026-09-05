@@ -38,13 +38,19 @@ function renderSeteoStock() {
       '<span class="icon">' + p.icon + '</span>' +
       '<div class="name-stock"><span class="name">' + p.name + '</span>' +
       (p.recipe ? recipeLine(st, p) : stockLine(p)) + "</div>" +
-      '<span class="price-display">' + money(p.price) + '</span>' +
+      '<span class="price-display">' + (p.pairGroup ? PAIR_GROUPS[p.pairGroup].hint : money(p.price)) + '</span>' +
       '<span class="expand-chev">' + (expanded ? "▲" : "▾") + '</span>' +
       "</div>";
     if (expanded) {
       html += '<div class="stock-edit">';
-      html += '<div class="mini-toggle"><span class="lbl">Precio</span>' +
-        '<span class="price-field">$<input type="number" min="0" step="100" value="' + p.price + '" data-price="' + p.id + '"></span></div>';
+      if (p.pairGroup) {
+        var pg = PAIR_GROUPS[p.pairGroup];
+        html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.4;">Se cobra por pares junto con los demás productos de su mismo grupo: ' +
+          money(pg.singlePrice) + ' si queda uno suelto, ' + money(pg.pairPrice) + ' el par (bebida incluida). No tiene precio propio editable.</div>';
+      } else {
+        html += '<div class="mini-toggle"><span class="lbl">Precio</span>' +
+          '<span class="price-field">$<input type="number" min="0" step="100" value="' + p.price + '" data-price="' + p.id + '"></span></div>';
+      }
       if (!p.recipe) {
         html += '<div class="mini-toggle" style="margin-top:10px;"><span class="lbl">Controlar stock de este producto</span>' +
           '<button class="switch" data-prod-switch="' + p.id + '" data-on="' + p.controlled + '"></button></div>';
