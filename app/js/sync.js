@@ -179,9 +179,9 @@ function cierreRow_(tipoCierre, st, cierreTime, o) {
     puesto_tipo: session.tipo, puesto_id: session.identificador, voluntario: session.voluntario,
     corte_id: o.corte_id, apertura: o.apertura, cierre: cierreTime,
     cant_cortes: o.cant_cortes, cant_ventas: o.cant_ventas,
-    monto_efectivo: t.efectivo, monto_transferencia: t.transferencia,
+    monto_efectivo: t.efectivo, monto_qr: t.qr,
     monto_tarjeta: t.tarjeta, monto_otro: t.otro,
-    monto_total_vendido: t.efectivo + t.transferencia + t.tarjeta + t.otro,
+    monto_total_vendido: t.efectivo + t.qr + t.tarjeta + t.otro,
     caja_inicial: o.caja_inicial, efectivo_esperado: o.efectivo_esperado,
     efectivo_contado: o.efectivo_contado, diferencia: o.diferencia,
     efectivo_retirado: o.efectivo_retirado, efectivo_final: o.efectivo_final

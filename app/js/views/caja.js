@@ -18,17 +18,17 @@ var CAJA_MOVIMIENTOS_PAGE = 5;
 function renderCajaBody() {
   var st = state[nav.stand];
   var t = st.totals;
-  var total = t.efectivo + t.transferencia + t.tarjeta + t.otro;
+  var total = t.efectivo + t.qr + t.tarjeta + t.otro;
   var body = document.getElementById("cajaBody");
   var esperadoCierre = st.corteCajaInicial + t.efectivo;
   var html = "";
 
   if (nav.closingPuesto) {
-    var ventasTotalMonto = st.cumulative.efectivo + st.cumulative.transferencia + st.cumulative.tarjeta + st.cumulative.otro;
+    var ventasTotalMonto = st.cumulative.efectivo + st.cumulative.qr + st.cumulative.tarjeta + st.cumulative.otro;
     html += '<div class="stat-grid">' +
       stat("Ventas", fmt.format(t.ventas)) +
       stat("Efectivo", money(t.efectivo)) +
-      stat("QR", money(t.transferencia)) +
+      stat("QR", money(t.qr)) +
       stat("Tarjeta", money(t.tarjeta)) +
       stat("Consumo mis.", money(t.otro)) +
       '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
@@ -39,7 +39,7 @@ function renderCajaBody() {
       '<div class="cash-row"><span class="k">Cantidad de ventas totales</span><span class="v">' + fmt.format(st.cumulative.ventas) + "</span></div>" +
       '<div class="cash-row"><span class="k">Efectivo inicial</span><span class="v">' + money(st.cajaInicial) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas efectivo</span><span class="v">' + money(st.cumulative.efectivo) + "</span></div>" +
-      '<div class="cash-row"><span class="k">Ventas QR</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Ventas QR</span><span class="v">' + money(st.cumulative.qr) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas tarjetas</span><span class="v">' + money(st.cumulative.tarjeta) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas consumo misionero</span><span class="v">' + money(st.cumulative.otro) + "</span></div>" +
       '<div class="cash-row"><span class="k"><strong>Ventas totales</strong></span><span class="v">' + money(ventasTotalMonto) + "</span></div>" +
@@ -58,7 +58,7 @@ function renderCajaBody() {
     html += '<div class="stat-grid">' +
       stat("Ventas", fmt.format(t.ventas)) +
       stat("Efectivo", money(t.efectivo)) +
-      stat("QR", money(t.transferencia)) +
+      stat("QR", money(t.qr)) +
       stat("Tarjeta", money(t.tarjeta)) +
       stat("Consumo mis.", money(t.otro)) +
       '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
@@ -97,7 +97,7 @@ function renderCajaBody() {
       '<div class="cash-row"><span class="k">Caja inicial del puesto</span><span class="v">' + money(st.cajaInicial) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas en efectivo</span><span class="v">' + money(st.cumulative.efectivo) + "</span></div>" +
       '<div class="cash-row"><span class="k"><strong>Efectivo esperado</strong></span><span class="v">' + money(expected) + "</span></div>" +
-      '<div class="cash-row"><span class="k">Transferencias</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
+      '<div class="cash-row"><span class="k">QR</span><span class="v">' + money(st.cumulative.qr) + "</span></div>" +
       '<div class="cash-row"><span class="k">Tarjetas</span><span class="v">' + money(st.cumulative.tarjeta) + "</span></div>" +
       '<div class="cash-input-row"><span class="k">Efectivo contado</span><input type="number" id="contadoInput" placeholder="0" value="' + (counted === null ? "" : counted) + '"></div>';
     if (counted !== null) {
@@ -189,7 +189,7 @@ function renderCajaBody() {
     st.corte += 1;
     st.corteCajaInicial = queda;
     st.corteApertura = cierreTime;
-    st.totals = { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 };
+    st.totals = { ventas: 0, efectivo: 0, qr: 0, tarjeta: 0, otro: 0 };
     st.log = [];
     showToast("Corte cerrado" + (retiro > 0 ? " · retiraste " + money(retiro) : "") + ". Empezó el Corte " + st.corte + ".");
     render();

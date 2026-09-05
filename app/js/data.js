@@ -9,7 +9,7 @@ function levelFor(stock, t) {
 }
 var LEVEL_LABEL = { mucho: "MUCHO", medio: "MEDIO", poco: "POCO", critico: "CRÍTICO", agotado: "AGOTADO" };
 var LEVEL_ORDER = { mucho: 4, medio: 3, poco: 2, critico: 1, agotado: 0 };
-var PAY_ICON = { efectivo: "💵", transferencia: "📲", tarjeta: "💳", otro: "🙏" };
+var PAY_ICON = { efectivo: "💵", qr: "📲", tarjeta: "💳", otro: "🙏" };
 
 // Stock compartido (ingrediente / recurso, ej. "Hamburguesa", "Bebida") del que
 // descuentan uno o varios productos vendibles. `controlled` (por defecto true) se
@@ -104,14 +104,14 @@ var STANDS = {
   }
 };
 
-// Los id internos ("transferencia", "otro") se mantienen fijos (columnas del Sheet,
-// totals/cumulative); solo cambian etiquetas y en qué puestos se ofrecen.
-//   - "transferencia": etiqueta visible "QR".
+// El id interno "otro" se mantiene fijo (columna del Sheet, totals/cumulative);
+// solo cambia la etiqueta visible a "Consumo misionero".
+//   - "qr" (ex "transferencia"): id y columna del Sheet renombrados a "qr"/"monto_qr".
 //   - "tarjeta": foodOnly -> solo en puestos con food:true.
 //   - "otro" ("Consumo misionero"): stands -> solo en los puestos listados.
 var PAY_METHODS = [
   { id: "efectivo", label: "Efectivo" },
-  { id: "transferencia", label: "QR" },
+  { id: "qr", label: "QR" },
   { id: "tarjeta", label: "Tarjeta", foodOnly: true },
   { id: "otro", label: "Consumo misionero", stands: ["buffet"] }
 ];

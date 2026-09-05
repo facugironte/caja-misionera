@@ -446,7 +446,7 @@ function levelFor(stock, t) {
 }
 var LEVEL_LABEL = { mucho: "MUCHO", medio: "MEDIO", poco: "POCO", critico: "CRÍTICO", agotado: "AGOTADO" };
 var LEVEL_ORDER = { mucho: 4, medio: 3, poco: 2, critico: 1, agotado: 0 };
-var PAY_ICON = { efectivo: "💵", transferencia: "📲", tarjeta: "💳", otro: "🙏" };
+var PAY_ICON = { efectivo: "💵", qr: "📲", tarjeta: "💳", otro: "🙏" };
 
 // Stock compartido (ingrediente / recurso, ej. "Hamburguesa", "Bebida") del que
 // descuentan uno o varios productos vendibles. `controlled` (por defecto true) se
@@ -541,14 +541,14 @@ var STANDS = {
   }
 };
 
-// Los id internos ("transferencia", "otro") se mantienen fijos (columnas del Sheet,
-// totals/cumulative); solo cambian etiquetas y en qué puestos se ofrecen.
-//   - "transferencia": etiqueta visible "QR".
+// El id interno "otro" se mantiene fijo (columna del Sheet, totals/cumulative);
+// solo cambia la etiqueta visible a "Consumo misionero".
+//   - "qr" (ex "transferencia"): id y columna del Sheet renombrados a "qr"/"monto_qr".
 //   - "tarjeta": foodOnly -> solo en puestos con food:true.
 //   - "otro" ("Consumo misionero"): stands -> solo en los puestos listados.
 var PAY_METHODS = [
   { id: "efectivo", label: "Efectivo" },
-  { id: "transferencia", label: "QR" },
+  { id: "qr", label: "QR" },
   { id: "tarjeta", label: "Tarjeta", foodOnly: true },
   { id: "otro", label: "Consumo misionero", stands: ["buffet"] }
 ];
@@ -568,7 +568,7 @@ function payMethodsFor(standKey) {
 // Subir cuando cambia la forma del estado persistido de forma incompatible
 // (ej. catálogo de productos / pools de stock). Estados guardados con otro
 // número se descartan y se arranca de cero.
-var STATE_SCHEMA = 7;
+var STATE_SCHEMA = 8;
 
 function freshStandState(key) {
   return {
@@ -578,8 +578,8 @@ function freshStandState(key) {
     cajaInicial: 0,
     corteApertura: null,
     corteCajaInicial: 0,
-    totals: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 },
-    cumulative: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0, retirado: 0 },
+    totals: { ventas: 0, efectivo: 0, qr: 0, tarjeta: 0, otro: 0 },
+    cumulative: { ventas: 0, efectivo: 0, qr: 0, tarjeta: 0, otro: 0, retirado: 0 },
     log: [],
     counted: null,
     pools: (STANDS[key].pools || []).map(function (p) {
@@ -810,9 +810,9 @@ function cierreRow_(tipoCierre, st, cierreTime, o) {
     puesto_tipo: session.tipo, puesto_id: session.identificador, voluntario: session.voluntario,
     corte_id: o.corte_id, apertura: o.apertura, cierre: cierreTime,
     cant_cortes: o.cant_cortes, cant_ventas: o.cant_ventas,
-    monto_efectivo: t.efectivo, monto_transferencia: t.transferencia,
+    monto_efectivo: t.efectivo, monto_qr: t.qr,
     monto_tarjeta: t.tarjeta, monto_otro: t.otro,
-    monto_total_vendido: t.efectivo + t.transferencia + t.tarjeta + t.otro,
+    monto_total_vendido: t.efectivo + t.qr + t.tarjeta + t.otro,
     caja_inicial: o.caja_inicial, efectivo_esperado: o.efectivo_esperado,
     efectivo_contado: o.efectivo_contado, diferencia: o.diferencia,
     efectivo_retirado: o.efectivo_retirado, efectivo_final: o.efectivo_final
@@ -879,7 +879,7 @@ function header(title, sub, chipHtml, noBack) {
 }
 
 function chipCorte(st) {
-  var total = st.totals.efectivo + st.totals.transferencia + st.totals.tarjeta + st.totals.otro;
+  var total = st.totals.efectivo + st.totals.qr + st.totals.tarjeta + st.totals.otro;
   return '<div class="topbar-chip">Corte <strong>' + st.corte + "</strong> · " + money(total) + "</div>";
 }
 
@@ -1476,17 +1476,17 @@ var CAJA_MOVIMIENTOS_PAGE = 5;
 function renderCajaBody() {
   var st = state[nav.stand];
   var t = st.totals;
-  var total = t.efectivo + t.transferencia + t.tarjeta + t.otro;
+  var total = t.efectivo + t.qr + t.tarjeta + t.otro;
   var body = document.getElementById("cajaBody");
   var esperadoCierre = st.corteCajaInicial + t.efectivo;
   var html = "";
 
   if (nav.closingPuesto) {
-    var ventasTotalMonto = st.cumulative.efectivo + st.cumulative.transferencia + st.cumulative.tarjeta + st.cumulative.otro;
+    var ventasTotalMonto = st.cumulative.efectivo + st.cumulative.qr + st.cumulative.tarjeta + st.cumulative.otro;
     html += '<div class="stat-grid">' +
       stat("Ventas", fmt.format(t.ventas)) +
       stat("Efectivo", money(t.efectivo)) +
-      stat("QR", money(t.transferencia)) +
+      stat("QR", money(t.qr)) +
       stat("Tarjeta", money(t.tarjeta)) +
       stat("Consumo mis.", money(t.otro)) +
       '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
@@ -1497,7 +1497,7 @@ function renderCajaBody() {
       '<div class="cash-row"><span class="k">Cantidad de ventas totales</span><span class="v">' + fmt.format(st.cumulative.ventas) + "</span></div>" +
       '<div class="cash-row"><span class="k">Efectivo inicial</span><span class="v">' + money(st.cajaInicial) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas efectivo</span><span class="v">' + money(st.cumulative.efectivo) + "</span></div>" +
-      '<div class="cash-row"><span class="k">Ventas QR</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
+      '<div class="cash-row"><span class="k">Ventas QR</span><span class="v">' + money(st.cumulative.qr) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas tarjetas</span><span class="v">' + money(st.cumulative.tarjeta) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas consumo misionero</span><span class="v">' + money(st.cumulative.otro) + "</span></div>" +
       '<div class="cash-row"><span class="k"><strong>Ventas totales</strong></span><span class="v">' + money(ventasTotalMonto) + "</span></div>" +
@@ -1516,7 +1516,7 @@ function renderCajaBody() {
     html += '<div class="stat-grid">' +
       stat("Ventas", fmt.format(t.ventas)) +
       stat("Efectivo", money(t.efectivo)) +
-      stat("QR", money(t.transferencia)) +
+      stat("QR", money(t.qr)) +
       stat("Tarjeta", money(t.tarjeta)) +
       stat("Consumo mis.", money(t.otro)) +
       '<div class="stat total"><div class="label">Total del corte</div><div class="value">' + money(total) + "</div></div>" +
@@ -1555,7 +1555,7 @@ function renderCajaBody() {
       '<div class="cash-row"><span class="k">Caja inicial del puesto</span><span class="v">' + money(st.cajaInicial) + "</span></div>" +
       '<div class="cash-row"><span class="k">Ventas en efectivo</span><span class="v">' + money(st.cumulative.efectivo) + "</span></div>" +
       '<div class="cash-row"><span class="k"><strong>Efectivo esperado</strong></span><span class="v">' + money(expected) + "</span></div>" +
-      '<div class="cash-row"><span class="k">Transferencias</span><span class="v">' + money(st.cumulative.transferencia) + "</span></div>" +
+      '<div class="cash-row"><span class="k">QR</span><span class="v">' + money(st.cumulative.qr) + "</span></div>" +
       '<div class="cash-row"><span class="k">Tarjetas</span><span class="v">' + money(st.cumulative.tarjeta) + "</span></div>" +
       '<div class="cash-input-row"><span class="k">Efectivo contado</span><input type="number" id="contadoInput" placeholder="0" value="' + (counted === null ? "" : counted) + '"></div>';
     if (counted !== null) {
@@ -1647,7 +1647,7 @@ function renderCajaBody() {
     st.corte += 1;
     st.corteCajaInicial = queda;
     st.corteApertura = cierreTime;
-    st.totals = { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 };
+    st.totals = { ventas: 0, efectivo: 0, qr: 0, tarjeta: 0, otro: 0 };
     st.log = [];
     showToast("Corte cerrado" + (retiro > 0 ? " · retiraste " + money(retiro) : "") + ". Empezó el Corte " + st.corte + ".");
     render();

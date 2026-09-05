@@ -3,7 +3,7 @@
 // Subir cuando cambia la forma del estado persistido de forma incompatible
 // (ej. catálogo de productos / pools de stock). Estados guardados con otro
 // número se descartan y se arranca de cero.
-var STATE_SCHEMA = 7;
+var STATE_SCHEMA = 8;
 
 function freshStandState(key) {
   return {
@@ -13,8 +13,8 @@ function freshStandState(key) {
     cajaInicial: 0,
     corteApertura: null,
     corteCajaInicial: 0,
-    totals: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0 },
-    cumulative: { ventas: 0, efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0, retirado: 0 },
+    totals: { ventas: 0, efectivo: 0, qr: 0, tarjeta: 0, otro: 0 },
+    cumulative: { ventas: 0, efectivo: 0, qr: 0, tarjeta: 0, otro: 0, retirado: 0 },
     log: [],
     counted: null,
     pools: (STANDS[key].pools || []).map(function (p) {

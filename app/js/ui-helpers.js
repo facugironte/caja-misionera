@@ -58,7 +58,7 @@ function header(title, sub, chipHtml, noBack) {
 }
 
 function chipCorte(st) {
-  var total = st.totals.efectivo + st.totals.transferencia + st.totals.tarjeta + st.totals.otro;
+  var total = st.totals.efectivo + st.totals.qr + st.totals.tarjeta + st.totals.otro;
   return '<div class="topbar-chip">Corte <strong>' + st.corte + "</strong> · " + money(total) + "</div>";
 }
 

@@ -43,7 +43,7 @@ Una fila por cada producto dentro de cada venta. Las líneas de una misma venta 
 | cantidad | Unidades de ese producto en la venta |
 | precio_unitario | Precio unitario |
 | subtotal | cantidad × precio_unitario |
-| metodo_pago | efectivo / transferencia / tarjeta / otro — ids internos fijos; etiquetas visibles: `transferencia`→"QR", `otro`→"Consumo misionero". Qué métodos se ofrecen depende del puesto (ver `payMethodsFor`). |
+| metodo_pago | efectivo / qr / tarjeta / otro — ids internos; etiqueta visible de `otro`: "Consumo misionero". Qué métodos se ofrecen depende del puesto (ver `payMethodsFor`). |
 | estado | activa / anulada (las líneas de una venta anulada quedan con `anulada`) |
 | total_venta | Total de toda la venta (repetido en cada línea) |
 
@@ -59,7 +59,7 @@ Una fila por cada producto dentro de cada venta. Las líneas de una misma venta 
 | apertura / cierre | corte: inicio/fin del corte · puesto: inicio de sesión / hora del cierre final |
 | cant_cortes | Cantidad de cortes de la sesión (solo filas `puesto`) |
 | cant_ventas | Ventas del corte / acumuladas del puesto |
-| monto_efectivo / monto_transferencia / monto_tarjeta / monto_otro | Ventas $ por método de pago |
+| monto_efectivo / monto_qr / monto_tarjeta / monto_otro | Ventas $ por método de pago |
 | monto_total_vendido | Suma de los cuatro |
 | caja_inicial | Caja inicial del corte / del puesto |
 | efectivo_esperado | caja_inicial + monto_efectivo (vacío en filas `puesto`) |

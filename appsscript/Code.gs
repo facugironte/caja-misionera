@@ -20,7 +20,7 @@ var SHEET_MOV_STOCK = "MovimientosStock";
 
 var HEADERS = {};
 HEADERS[SHEET_DETALLE_VENTAS] = ["timestamp", "venta_id", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "producto", "cantidad", "precio_unitario", "subtotal", "metodo_pago", "estado", "total_venta"];
-HEADERS[SHEET_CIERRES] = ["timestamp", "tipo_cierre", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "apertura", "cierre", "cant_cortes", "cant_ventas", "monto_efectivo", "monto_transferencia", "monto_tarjeta", "monto_otro", "monto_total_vendido", "caja_inicial", "efectivo_esperado", "efectivo_contado", "diferencia", "efectivo_retirado", "efectivo_final"];
+HEADERS[SHEET_CIERRES] = ["timestamp", "tipo_cierre", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "apertura", "cierre", "cant_cortes", "cant_ventas", "monto_efectivo", "monto_qr", "monto_tarjeta", "monto_otro", "monto_total_vendido", "caja_inicial", "efectivo_esperado", "efectivo_contado", "diferencia", "efectivo_retirado", "efectivo_final"];
 HEADERS[SHEET_MOV_STOCK] = ["timestamp", "puesto_tipo", "puesto_id", "voluntario", "corte_id", "tipo", "item", "delta", "stock_resultante", "venta_id", "motivo"];
 
 /**

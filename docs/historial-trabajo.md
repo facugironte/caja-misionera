@@ -240,6 +240,17 @@ La primera versión descontaba **1 sola bebida por cada par** (ej. "2 choripán"
 - Descuento de stock: `applyGroupStock` (vender.js) y `stockRowsForSale_` (sync.js) multiplican por `members.length` (1 o 2), no por una bebida fija. El **precio no cambia** ($18.000 el par / $10.000 el individual) — solo la cantidad de bebida que se descuenta y cómo se llama el combo.
 - Verificado: 2 hamburguesa + 1 choripán + 1 veggie (4 principales) ahora descuenta Bebida −4 (antes −2); 2 choripán + 1 hamburguesa (3 principales) descuenta Bebida −3 (2 del par + 1 del individual). Cache-busting a `?v=4`.
 
+## El método de pago "QR" se guarda como "qr", no "transferencia" (2026-09-04)
+
+Hasta ahora, para no tocar el backend, el botón "QR" seguía grabando internamente el id viejo `transferencia` (decisión tomada al renombrar "Transferencia" -> "QR" solo en la etiqueta). Eso hacía que en el Sheet la columna se siguiera llamando `monto_transferencia` y que `metodo_pago` en DetalleVentas dijera literalmente "transferencia" para una venta cobrada por QR — confuso al mirar los datos. Se pidió corregirlo de raíz:
+
+- **Id interno:** `transferencia` -> `qr` en todo el front (`PAY_METHODS`, `PAY_ICON`, `state.totals`/`cumulative`, `caja.js`, `sync.js`). `metodo_pago` en DetalleVentas ahora graba `"qr"` (igual que `"efectivo"`/`"tarjeta"`/`"otro"`, todos ids en minúscula sin acentos).
+- **Columna del Sheet:** `monto_transferencia` -> `monto_qr` en `Code.gs` (pestaña Cierres) y en `sync.js` (`cierreRow_`).
+- Labels sueltas que decían "Transferencia(s)" en la UI de Caja -> "QR".
+- `STATE_SCHEMA` a `8` (la forma de `totals`/`cumulative` cambió de clave).
+- **Requiere backend:** `clasp push` + re-deploy del Web App (Code.gs cambió). Al ser una planilla ya creada, `setupSheets` **no** renombra la celda de encabezado existente (solo crea headers en una pestaña vacía) — como el orden de columnas no cambió, los datos van a caer en la columna correcta igual, pero conviene renombrar a mano la celda de encabezado en "Cierres" de "monto_transferencia" a "monto_qr" para que no quede desactualizada.
+- Verificado: venta por QR guarda `totals.qr`, `metodo_pago:"qr"` en DetalleVentas y `monto_qr` en el payload de Cierres exactamente con las claves del header de `Code.gs` (sin claves de más ni de menos). Cache-busting a `?v=5`.
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.
