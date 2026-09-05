@@ -75,13 +75,14 @@ var STANDS = {
       product("pizzeta_beb", "🍕", "Pizzeta + bebida (menores de 7)", 6000, { recipe: { pizzeta: 1, bebida: 1 } }),
       product("cafe", "☕", "Café", 1000, { controlled: true, stock: 100, thresholds: { mucho: 60, medio: 30, poco: 10 } }),
       product("te", "🍵", "Té", 1000, { controlled: true, stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } }),
-      product("torta", "🍰", "Torta", 3000, { controlled: true, stock: 40, thresholds: { mucho: 30, medio: 15, poco: 5 } })
+      product("torta", "🍰", "Torta", 3000, { controlled: true, stock: 40, thresholds: { mucho: 30, medio: 15, poco: 5 } }),
+      product("cookie", "🍪", "Cookie / scon", 1000, { controlled: true, stock: 60, thresholds: { mucho: 40, medio: 20, poco: 8 } })
     ]
   },
   tickets: {
     label: "Tickets", sub: "Fichas para juegos", icon: "🎟️",
     products: [
-      product("juego1", "🎯", "1 juego", 1000),
+      product("juego1", "🎯", "1 juego suelto", 1000),
       product("tira5", "🎟️", "1 tira (5)", 3000),
       product("tira10", "🎫", "2 tiras (10)", 5000)
     ]

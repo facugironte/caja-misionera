@@ -251,6 +251,12 @@ Hasta ahora, para no tocar el backend, el botón "QR" seguía grabando intername
 - **Requiere backend:** `clasp push` + re-deploy del Web App (Code.gs cambió). Al ser una planilla ya creada, `setupSheets` **no** renombra la celda de encabezado existente (solo crea headers en una pestaña vacía) — como el orden de columnas no cambió, los datos van a caer en la columna correcta igual, pero conviene renombrar a mano la celda de encabezado en "Cierres" de "monto_transferencia" a "monto_qr" para que no quede desactualizada.
 - Verificado: venta por QR guarda `totals.qr`, `metodo_pago:"qr"` en DetalleVentas y `monto_qr` en el payload de Cierres exactamente con las claves del header de `Code.gs` (sin claves de más ni de menos). Cache-busting a `?v=5`.
 
+## Cookie/scon en Buffet + "1 juego suelto" (2026-09-04)
+
+- **Buffet:** nuevo producto "Cookie / scon" ($1.000), con stock propio (control activado por defecto, igual que Café/Té/Torta).
+- **Tickets:** "1 juego" pasa a llamarse "1 juego suelto".
+- `STATE_SCHEMA` a `9` (catálogo cambió). Cache-busting a `?v=6`. No toca el backend.
+
 ## Pendientes / posibles próximos pasos
 
 - Evaluar si conviene mover `app/index.html` a la raíz del repo (en vez de un redirect) para simplificar aún más la estructura.
